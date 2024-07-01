@@ -9,10 +9,10 @@ Panaln consists of three components, data preprocessing, pan-index building, and
 
 # Available data:
 <u>Illumina reads dataset</u>:   
-https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data\_indexes/AshkenazimTrio/$\linebreak$
+https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data\_indexes/AshkenazimTrio/
 sequence.index.AJtrio\_Illumina\_2x250bps\_06012016\_updated.HG004
 \underline{PacBio-CCS reads dataset}:   
-https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/\indent HG002\_NA24385\_son/$\linebreak$
+https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/\indent HG002\_NA24385\_son/
 PacBio\_CCS\_10kb/m54238\_180628\_014238.Q20.fastq
 \underline{Common small variants}:\\
 http://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/snp144Common.txt.gz
