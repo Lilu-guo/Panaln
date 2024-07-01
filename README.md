@@ -34,7 +34,7 @@ https://github.com/ksahlin/strobealign/blob/main/evaluation.md
   2. Get the index file as: "sal.idx3, newD.idx3, lroot.idx3, rroot.idx3, rankl.idx3, and U.idx3"
   
 # Step IV. Mapping processing
-  1. run the shell command: "./panaln align <pan_index_Name> <fastq_Name> <sam_Name>, where <pan_index_Name> is the index has been constructed, <fastq_Name> is the sequencing reads file, <sam_Name> is the mapping result file.
+  1. run the shell command: "./panaln align <pan_index_Name> <fastq_Name> <sam_Name>, where <pan_index_Name> is the index file that has been constructed, <fastq_Name> is the sequencing reads file, and <sam_Name> is the mapping result file.
   
 # Feedback
 Please report bugs to Email: guolilu@stu.xidian.edu.cn if any questions or suggestions. Your feedback and test results are welcome.
