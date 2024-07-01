@@ -8,17 +8,15 @@ Indexing Pan-genome with applications in reads mapping and alignment.
 Panaln consists of three components, data preprocessing, pan-index building, and reads mapping. After preprocessing the data format, you should first build the pan-index with the VCF file (e.g., snp144common.txt from dbSNP dataset) and the reference genome (e.g., GRCh38.fasta), then perform the mapping processing. Since the data is quite large, we put the download link below or you can email us to ask for it.
 
 # Available data:
-<u>Illumina reads dataset</u>:   
-https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data\_indexes/AshkenazimTrio/
-sequence.index.AJtrio\_Illumina\_2x250bps\_06012016\_updated.HG004
-\underline{PacBio-CCS reads dataset}:   
-https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/\indent HG002\_NA24385\_son/
-PacBio\_CCS\_10kb/m54238\_180628\_014238.Q20.fastq
-\underline{Common small variants}:\\
-http://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/snp144Common.txt.gz
-\underline{Synthetic reads simulator}:\\
-https://github.com/DaehwanKimLab/hisat2/blob/master/hisat2\_simulate\_reads.py 
-\underline{Pipeline of variant calling}:\\
+Illumina reads dataset:   
+https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data\_indexes/AshkenazimTrio/sequence.index.AJtrio\_Illumina\_2x250bps\_06012016\_updated.HG004   
+PacBio-CCS reads dataset:   
+https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/\indent HG002\_NA24385\_son/PacBio\_CCS\_10kb/m54238\_180628\_014238.Q20.fastq   
+Common small variants:   
+http://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/snp144Common.txt.gz   
+Synthetic reads simulator:   
+https://github.com/DaehwanKimLab/hisat2/blob/master/hisat2\_simulate\_reads.py    
+Pipeline of variant calling:   
 https://github.com/ksahlin/strobealign/blob/main/evaluation.md   
 
 # Step I. Install
