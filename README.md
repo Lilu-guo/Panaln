@@ -2,7 +2,7 @@
 version 1.3（20240630）
 
 # What is it?
-Indexing Pan-genome with Applications in Read Mapping and Alignment.
+Indexing Pan-genome with Applications in Reads Mapping and Alignment.
 
 # How to use it?
 Panaln consists of three components, data preprocessing, pan-index building, and read mapping. After preprocessing the data format, you should first build the pan-index with the VCF file (e.g., snp144common.txt from dbSNP dataset) and the reference genome (e.g., GRCh38.fasta), then perform the mapping processing. Since the data is quite large, we put the download link below or you can send me an email to request it.
