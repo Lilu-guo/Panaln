@@ -1,5 +1,5 @@
 # Panaln
-version 1.0（20230920）
+version 1.3（20240630）
 
 # What is it?
 Indexing Pan-genome with Applications in Read Mapping and Alignment.
