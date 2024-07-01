@@ -2,7 +2,7 @@
 version 1.3（20240630）
 
 # What is it?
-Indexing Pan-genome with applications in reads mapping and alignment.
+Indexing pan-genome with applications in reads mapping and alignment.
 
 # How to use it?
 Panaln consists of three components, data preprocessing, pan-index building, and reads mapping. After preprocessing the data format, you should first build the pan-index with the VCF file (e.g., snp144common.txt from dbSNP dataset) and the reference genome (e.g., GRCh38.fasta), then perform the mapping processing. Since the data is quite large, we put the download link below or you can email us to ask for it.
@@ -20,7 +20,7 @@ Pipeline of variant calling:
 https://github.com/ksahlin/strobealign/blob/main/evaluation.md   
 
 # Step I. Install
-  1. Download (or clone) the source code form [https://github.com/Hongweihuo-Lab/Panaln](https://github.com/Lilu-guo/Panaln)
+  1. Download (or clone) the source code form https://github.com/Lilu-guo/Panaln
   2. Compile the source code. (Note that you need to compile FM first)
 
 # Step II. Data preprocessing
