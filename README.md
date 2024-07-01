@@ -31,11 +31,10 @@ https://github.com/ksahlin/strobealign/blob/main/evaluation.md
      
 # Step III. Build pan-index
   1. Run the shell command: "./panaln index snp144Comm_indel.fasta".
-  2. Get the index file as: "sal.idx.256, newD.idx.256, lroot.idx.256, rroot.idx.256"
+  2. Get the index file as: "sal.idx3, newD.idx3, lroot.idx3, rroot.idx3, rankl.idx3, and U.idx3"
   
 # Step IV. Mapping processing
-  1. run the shell command: "./panaln align -n 3 <processed_fasta_Name> <fastq_Name> <aln_Name>, where processed_fasta_Name is the processed genome name, fastq_Name is the sequencing reads file name, aln_Name is the intermediate alignment file name.
-  2. run the shell command: "./panaln aln2sam <processed_fasta_Name> <aln_Name> <sam_Name>, where processed_fasta_Name is the processed genome name, aln_Name is the intermediate alignment file name, sam_Name is the mapping result file.
+  1. run the shell command: "./panaln align <pan_index_Name> <fastq_Name> <sam_Name>, where pan_index_Name is the index has been constructed, fastq_Name is the sequencing reads file, aln_Name is the mapping result file.
   
 # Feedback
 Please report bugs to Email: guolilu@stu.xidian.edu.cn if any questions or suggestions. Your feedback and test results are welcome.
