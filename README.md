@@ -9,13 +9,13 @@ Panaln consists of three components, data preprocessing, pan-index building, and
 
 # Available data:
 Illumina reads dataset:   
-https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data\_indexes/AshkenazimTrio/sequence.index.AJtrio\_Illumina\_2x250bps\_06012016\_updated.HG004   
+https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_indexes/AshkenazimTrio/sequence.index.AJtrio_Illumina_2x250bps_06012016_updated.HG004   
 PacBio-CCS reads dataset:   
-https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/\indent HG002\_NA24385\_son/PacBio\_CCS\_10kb/m54238\_180628\_014238.Q20.fastq   
+https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/PacBio_CCS_10kb/m54238_180628_014238.Q20.fastq   
 Common small variants:   
 http://hgdownload.soe.ucsc.edu/goldenPath/hg38/database/snp144Common.txt.gz   
 Synthetic reads simulator:   
-https://github.com/DaehwanKimLab/hisat2/blob/master/hisat2\_simulate\_reads.py    
+https://github.com/DaehwanKimLab/hisat2/blob/master/hisat2_simulate_reads.py    
 Pipeline of variant calling:   
 https://github.com/ksahlin/strobealign/blob/main/evaluation.md   
 
