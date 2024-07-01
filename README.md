@@ -20,7 +20,7 @@ Pipeline of variant calling:
 https://github.com/ksahlin/strobealign/blob/main/evaluation.md   
 
 # Step I. Install
-  1. Download (or clone) the source code form https://github.com/Hongweihuo-Lab/Panaln
+  1. Download (or clone) the source code form [https://github.com/Hongweihuo-Lab/Panaln](https://github.com/Lilu-guo/Panaln)
   2. Compile the source code. (Note that you need to compile FM first)
 
 # Step II. Data preprocessing
