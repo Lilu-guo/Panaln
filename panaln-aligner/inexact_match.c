@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -6,1885 +5,832 @@
 #include <stdint.h>
 #include <math.h>
 #include <time.h>
+#include "bwt.h"
 #include "FMapi.h"
 #include "align.h"
 #include "inexact_match.h"
 #include "exact_match.h"
 #include <omp.h>
-
-long nbt = 0;
-
-static inline int aln_score(const int m, const int o, const int e, const aln_params_t *p)
-{
-	return m * p->mm_score + o * p->gapo_score + e * p->gape_score;
+long nbt=0; 
+void calculate_d(bwt_t* BWT, char* read, const int readLen, diff_lower_bound_t* D, aln_params_t* params);
+static inline int aln_score(const int m, const int o, const int e, const aln_params_t *p) {             
+	return m*p->mm_score + o*p->gapo_score + e*p->gape_score;
 }
-
-int align_reads_inexact_fm(struct FMA *fm, reads_t *reads, sa_intv_list_t *precalc_sa_intervals_table, aln_params_t *params, char *alnFname)
-{
-	FILE *alnFile = (FILE *)fopen(alnFname, "a+b");
-	if (alnFile == NULL)
-	{
-		printf("align_reads_inexact: Cannot open ALN file: %s!\n", alnFname);
-		perror(alnFname);
-		exit(1);
+int align_reads_inexact_fm(FILE* samFile, AUX* aux, struct FMA *fm, reads_t* reads, sa_intv_list_t* precalc_sa_intervals_table, aln_params_t* params, char* alnFname) { 
+	for (int i = 0; i < 194; i++) {          
+		fprintf(samFile, "@SQ\tSN:%s\tLN:%d\n", aux->annotations->seq_anns[i].name, (int) (aux->annotations->seq_anns[i].end_index - aux->annotations->seq_anns[i].start_index)); 
 	}
-	diff_lower_bound_t *D = (diff_lower_bound_t *)calloc(reads->max_len + 1, sizeof(diff_lower_bound_t));
-	diff_lower_bound_t *D_seed = (diff_lower_bound_t *)calloc(params->seed_length + 1, sizeof(diff_lower_bound_t));
-	diff_lower_bound_t *D2 = (diff_lower_bound_t *)calloc(reads->max_len + 1, sizeof(diff_lower_bound_t));
-	diff_lower_bound_t *D2_seed = (diff_lower_bound_t *)calloc(params->seed_length + 1, sizeof(diff_lower_bound_t));
-	int imax = 0, max = 0, smax = 0, emax = 0, imax2 = 0, max2 = 0, smax2 = 0, emax2 = 0, cds = 0, cde = 0;
-	priority_heap_t *heap = heap_init(params);
+	fprintf(samFile, "@PG\tID:panaln\tPN:panaln\tVN:0.1\n");                
+	int myseed = 25;
+	srand48(myseed);                                                                                     
+	jj("gll_max_len:%d \n", reads->max_len);
+	diff_lower_bound_t* D = (diff_lower_bound_t*) calloc(reads->max_len+1, sizeof(diff_lower_bound_t));  
+	diff_lower_bound_t* D2 = (diff_lower_bound_t*) calloc(reads->max_len+1, sizeof(diff_lower_bound_t)); 
+	int cds=0, cde=0;
+	sa_intv_list_t* pD2;
+	sa_intv_list_t* pD;
 	int num_processed = 0;
-	while (num_processed < reads->count)
-	{
+	while(num_processed < reads->count) {
 		clock_t t = clock();
-		int batch_size = ((reads->count - num_processed) > READ_BATCH_SIZE) ? READ_BATCH_SIZE : (reads->count - num_processed);
-		int n_sid2 = 0, n_sid = 0, n_mid = 0, n_raw = 0, n_exact = 0;
-		for (int i = num_processed; i < num_processed + batch_size; i++)
-		{
-			imax = max = smax = emax = imax2 = max2 = smax2 = emax2 = cds = cde = 0;
-			read_t *read = &reads->reads[i];
-			read->alns = init_alignments();
-			sa_intv_list_t *precalc_sa_intervals = NULL;
-			if (params->use_precalc)
-			{
-				int read_index = read2index(read->rc, read->len);
-				if (read_index < 0)
-				{
-					continue;
+		int batch_size = ((reads->count - num_processed) > READ_BATCH_SIZE ) ? READ_BATCH_SIZE : (reads->count - num_processed);
+		for(int i = num_processed; i < num_processed + batch_size; i++) {
+			cds =cde =0;
+			read_t* read = &reads->reads[i];                                                             
+			printf("%d ...start %s   %d \n", i, read->name, read->len);                                  
+			pD2 =calculate_d_fm2(precalc_sa_intervals_table, fm, read->rc, read->len, D2, params);
+			jj("D2-bw... num_diff: %d \n", D2[read->len-1].num_diff);                                    
+			int sz2=D2[read->len-1].num_diff - D2[0].num_diff;
+			if(sz2 !=0){
+				free_sa_interval_list(pD2);                                                              
+				int p2[sz2];                                                                             
+				int b2=0, last2=D2[read->len-1].num_diff, curr2=0;
+				for(int i=read->len-1; i>=0; i--){                                                       
+					curr2 =D2[i].num_diff;                                                               
+					if(curr2!=last2){                                                                    
+						p2[b2] =read->len-i-1;                                                           
+						b2++;
+					}
+					last2 =curr2;
+					jj("%d ",D2[i].num_diff);                                                            
 				}
-				precalc_sa_intervals = &(precalc_sa_intervals_table[read_index]);
-			}
-			calculate_d_fm(fm, read->rc, read->len, D2, params);
-			int p2[D2[read->len - 1].num_diff];
-			int b2 = 0, last2 = D2[read->len - 1].num_diff, curr2 = 0;
-			for (int i = read->len - 1; i >= 0; i--)
-			{
-				curr2 = D2[i].num_diff;
-				if (curr2 != last2)
-				{
-					p2[b2] = read->len - i - 1;
-					b2++;
-				}
-				last2 = curr2;
-			}
-
-			if (D2[read->len - 1].num_diff > params->max_diff)
-			{
-				continue;
-			}
-
-			int dv = D2[read->len - 1].num_diff;
-			if (dv != 0)
-			{
-				calculate_d_fm(fm, read->seq, read->len, D, params);
-				int p[D[read->len - 1].num_diff];
-				int b = 0, last = 0, curr = 0;
-				for (int i = 0; i < read->len; i++)
-				{
-					curr = D[i].num_diff;
-					if (curr != last)
-					{
-						p[b] = i;
+				jj("\n");
+				pD =calculate_d_fm2(precalc_sa_intervals_table, fm, read->seq, read->len, D, params);
+				free_sa_interval_list(pD);
+				jj("D-fw... num_diff: %d \n", D[read->len-1].num_diff);                                  
+				int sz=D[read->len-1].num_diff - D[0].num_diff;
+				int p[sz];                                          
+				int b=0, last=0, curr=0;
+				for(int i=0; i<read->len; i++){                                                          
+					curr=D[i].num_diff;                                                                  
+					if(curr!=last){                                                                      
+						p[b]=i;                                                                          
 						b++;
 					}
-					last = curr;
-					jj("%d", D[i].num_diff);
+					last=curr;
+					jj("%d ",D[i].num_diff);                                                             
+				}                                                                                 
+				jj("\n");
+				int C[sz2+sz+2];
+				C[0]=0; 
+				int _i=0, _j=0, _k=1;
+				while(_i!=sz2 && _j!=sz){                                                                 
+					if(p2[_i]<=p[_j]){
+						C[_k]=p2[_i];
+						_i++;
+					}else{
+						C[_k]=p[_j];
+						_j++;
+					}
+					_k++;
 				}
-
-				int imax = D2[read->len - 1].num_diff;
-				int jmax = D[read->len - 1].num_diff;
-				int C[imax + jmax + 2];
-				for (int i = 0; i < imax; i++)
-				{
-					C[i] = p2[i];
+				if(_i==sz2){
+					for(; _j<sz; _j++){
+						C[_k]=p[_j];
+						_k++;
+					}
+				}else{
+					for(; _i<sz2; _i++){
+						C[_k]=p2[_i];
+						_k++;
+					}
 				}
-				for (int j = 0; j < jmax; j++)
-				{
-					C[imax + j] = p[j];
+				C[sz2+sz+1]=read->len-1;
+				int len=0, lC=0, gap=0, lgap=0, s=0, e=0;
+				for(int k=1; k<sz2+sz+2; k++){
+					gap=C[k]-lC;
+					if(gap>len){                                                                         
+						len=gap;                                                                         
+						s=lC;
+						e=C[k];                                                                          
+					}
+					lC=C[k];
+					lgap=gap;
 				}
-				C[imax + jmax] = 0;
-				C[imax + jmax + 1] = read->len - 1;
-				for (int i = 0, t = 0; i < imax + jmax + 1; i++)
-				{
-					for (int j = 0; j < imax + jmax - i + 1; j++)
-					{
-						if (C[j] > C[j + 1])
-						{
-							t = C[j];
-							C[j] = C[j + 1];
-							C[j + 1] = t;
+				jj("s:%d e:%d \n",s,e);
+				cds =s;                                                                                  
+				cde =e-1;
+				seed_and_extend(precalc_sa_intervals_table, samFile, cds, cde, aux, fm, read, params);
+			}else{ 
+				cds=0; 
+				bwtint_t fm_n;
+				Fm_GetN(fm, &fm_n);
+				bwtint_t woff;
+				int readLen =read->len;
+				char* read2=read->rc;
+				char* qual2=read->qual;
+				uint32_t tidx =0, toff =0, qlen =readLen;
+				uint8_t rd[qlen+1], qu[qlen+1];
+				fasta_annotations_t* annotations =aux->annotations;
+				uint8_t iFW=0;
+				sa_intv_t* intv =pD2->first_intv;                                                        
+				int sz=0, z=0;
+				for(int i=0; i<pD2->size; i++){
+					sa_intv_t* tmp =intv;
+					sz =sz+(tmp->U-tmp->L+1);                                                            
+					intv =intv->next_intv;
+				}
+				int rr =lrand48()%(pD2->size);
+				jj("itvSz: %d   SZ: %d \n", pD2->size, sz);
+				intv =pD2->first_intv;
+				for(int i=0; i<rr; i++){                                                                 
+					intv =intv->next_intv;
+				}
+				for(int i=0; i<(pD2->size -rr); i++){
+					sa_intv_t* tmp =intv;
+					if(z>0){break;}
+					for(bwtint_t j=tmp->L; j<=tmp->U; j++){
+						if(z>0){break;} 
+						int r =lrand48()%(tmp->U - tmp->L+1);              
+						woff =Fm_Lookup(fm, j+r);
+						iFW =0;
+						if(woff >(fm_n/2)){                                
+							iFW =1;
+							woff =fm_n-woff-(readLen-cds);
+						}else{
+							woff =woff-(cds);                               
 						}
+						for(int k=0; k<annotations->num_seq; k++){         
+							if((woff >=annotations->seq_anns[k].start_index) && (woff <=annotations->seq_anns[k].end_index)){
+								tidx =k; break;
+							}
+						}
+						toff =woff-annotations->seq_anns[tidx].start_index+1;       
+						jj("CEMS-Chr:%s  Pos:%u  iFW:%d  cur-intvSz:%d  r:%d  rr:%d  tidx:%d \n", annotations->seq_anns[tidx].name, toff, iFW?0:16, tmp->U - tmp->L+1, r, rr, tidx);
+						if(iFW){
+							for(int i=0; i<qlen; i++){
+								rd[qlen-i-1] =RCP2asc[read2[i]];      
+								qu[i] =qual2[i];
+							}
+						}else{
+							for(int i=0; i<qlen; i++){
+								rd[i] =pan2asc[read2[i]];
+								qu[qlen-i-1] =qual2[i];                               
+							}
+						}
+						rd[qlen]=0;                                  
+						qu[qlen]=0;
+						fprintf(samFile, "%s\t%d\t%s\t%u\t", read->name, iFW?0:16, annotations->seq_anns[tidx].name, toff);
+						fprintf(samFile, "%d\t", (sz>1)?0:((tidx<22)?37:3));       
+						fprintf(samFile, "%dM\t", readLen);          
+						fprintf(samFile, "*\t0\t0\t");               
+						fprintf(samFile, "%s\t", rd);                
+						fprintf(samFile, "%s\t", qu);                
+						fprintf(samFile, "AS:i:%d\n", 0);            
+						z++;
 					}
+					intv =intv->next_intv;
 				}
-
-				int len = 0, lC = 0, gap = 0, lgap = 0, s = 0, e = 0;
-				for (int k = 1; k < imax + jmax + 2; k++)
-				{
-					gap = C[k] - lC;
-					if (gap > len)
-					{
-						len = gap;
-						s = lC;
-						e = C[k];
-					}
-					lC = C[k];
-					lgap = gap;
-				}
-				cds = s;
-				cde = e - 1;
-			}
-			else
-			{
-				n_exact++;
-				cds = 0;
-				cde = 0;
-			}
-
-			params->no_s = cds;
-			params->no_e = cde;
-
-			int wj = 0;
-			if (cds == 0)
-			{
-				n_sid2++;
-				wj = inexact_match_fm_sid2(fm, read->seq, read->len, heap, precalc_sa_intervals, params, D2, D2_seed, read->alns);
-			}
-			else if (cde == read->len - 2)
-			{
-				n_sid++;
-				wj = inexact_match_fm_sid(fm, read->rc, read->len, heap, precalc_sa_intervals, params, D, D_seed, read->alns);
-			}
-			else
-			{
-				n_mid++;
-				wj = inexact_match_fm_mid(fm, read->rc, read->len, heap, precalc_sa_intervals, params, D, D_seed, read->alns);
-			}
-
-			if (read->alns->num_entries == 0 && wj == 0)
-			{
-				n_raw++;
-				calculate_d_fm(fm, read->seq, params->seed_length, D_seed, params);
-				inexact_match_fm_raw(fm, read->rc, read->len, heap, precalc_sa_intervals, params, D, D_seed, read->alns);
+				free_sa_interval_list(pD2);
 			}
 		}
-		printf("read_n: sid2:%d sid:%d mid:%d raw:%d exact:%d nbt:%ld \n", n_sid2, n_sid, n_mid, n_raw, n_exact, nbt);
-		printf("Processed %d reads. Inexact matching time: %.2f sec.", num_processed + batch_size, (float)(clock() - t) / CLOCKS_PER_SEC);
-
-		clock_t ts = clock();
-		for (int i = num_processed; i < num_processed + batch_size; i++)
-		{
-			read_t *read = &reads->reads[i];
-			alns2alnf(read->alns, alnFile);
-			free_alignments(read->alns);
-			free(read->seq);
-			free(read->rc);
-			free(read->qual);
-			read->seq = read->rc = read->qual = NULL;
-		}
-		printf("Storing results time: %.2f sec\n", (float)(clock() - ts) / CLOCKS_PER_SEC);
+		printf("Processed %d reads. Inexact matching time: %.2f sec.", num_processed+batch_size, (float)(clock() - t) / CLOCKS_PER_SEC);
 		num_processed += batch_size;
 	}
-
 	free(D);
-	free(D_seed);
-	heap_free(heap);
-	fclose(alnFile);
+	free(D2);
+	fclose(samFile);
 	return 0;
 }
-
-void calculate_d_fm(struct FMA *fm, char *read, int readLen, diff_lower_bound_t *D, aln_params_t *params)
-{
+void calculate_d(bwt_t *BWT, char* read, int readLen, diff_lower_bound_t* D, aln_params_t* params) {      
 	int z = 0;
-	bwtint_t L = 0, U, fm_n;
-	Fm_GetN(fm, &fm_n);
-	U = fm_n;
-
-	sa_intv_list_t *intv_list_curr = (sa_intv_list_t *)calloc(1, sizeof(sa_intv_list_t));
-	sa_intv_list_t *intv_list_next = (sa_intv_list_t *)calloc(1, sizeof(sa_intv_list_t));
+	bwtint_t L = 0;
+	bwtint_t U = BWT->length-1;
+	if(!params->is_multiref) {                                                                            
+		for (int i = readLen-1; i >= 0; i--) {                                                            
+			unsigned char c = nt4_gray[(int) read[i]];
+			if(c == 10) {                                                                                 
+				L = 0;
+				U = BWT->length-1;
+				z++;
+			} else {
+				bwtint_t occL, occU;
+				if((L-1) == U) {                                                                          
+					occL = O(BWT, c, L-1);
+					occU = occL;
+				} else {
+					occL = O(BWT, c, L-1);
+					occU = O(BWT, c, U);
+				}
+				L = BWT->C[c] + occL + 1;
+				U = BWT->C[c] + occU;
+				if(L > U) {                                                                               
+					L = 0;
+					U = BWT->length-1;                                                                    
+					z++;
+				}
+			}
+			D[readLen-1-i].num_diff = z;                                                                  
+		}
+		D[readLen].num_diff = ++z;                                                                        
+		return;
+	}
+	sa_intv_list_t* intv_list_curr = (sa_intv_list_t*) calloc(1, sizeof(sa_intv_list_t));
+	sa_intv_list_t* intv_list_next = (sa_intv_list_t*) calloc(1, sizeof(sa_intv_list_t));
 	add_sa_interval(intv_list_curr, L, U);
-
-	for (int i = readLen - 1; i >= 0; i--)
-	{
+	for (int i = readLen-1; i >= 0; i--) {
 		unsigned char c = read[i];
 		int num_matches = 0;
-		if (c > 3)
-		{
-			clear_sa_interval_list(intv_list_curr);
-		}
-		else
-		{
-			sa_intv_t *intv = intv_list_curr->first_intv;
-			for (int s = 0; s < intv_list_curr->size; s++)
-			{
-				bwtint_t L[BASES_PER_NUCLEOTIDE] = {0};
-				bwtint_t U[BASES_PER_NUCLEOTIDE] = {0};
-				Occ8p(c, intv->L - 1, intv->U, L, U, fm);
-				for (int i = 0; i < BASES_PER_NUCLEOTIDE; i++)
-				{
-					if (L[i] <= U[i])
-					{
-						num_matches += U[i] - L[i] + 1;
-						add_sa_interval(intv_list_next, L[i], U[i]);
+		if(c > 3) {
+			clear_sa_interval_list(intv_list_curr); 
+		} else {
+			sa_intv_t* intv = intv_list_curr->first_intv;
+			for(int s = 0; s < intv_list_curr->size; s++) {
+				for(int b = 0; b < BASES_PER_NUCLEOTIDE; b++) {
+					unsigned char base = nucl_bases_table[c][b];                                         
+					if(base == 10) continue; 
+					bwtint_t L = BWT->C[base] + O(BWT, base, intv->L-1) + 1;
+					bwtint_t U = BWT->C[base] + O(BWT, base, intv->U);
+					if (L <= U) {
+						num_matches += U - L + 1;
+						add_sa_interval(intv_list_next, L, U);                                          
 					}
 				}
 				intv = intv->next_intv;
 			}
 		}
-		sa_intv_list_t *tmp = intv_list_curr;
+		sa_intv_list_t* tmp = intv_list_curr;
 		intv_list_curr = intv_list_next;
 		intv_list_next = tmp;
 		clear_sa_interval_list(intv_list_next);
-
-		if (intv_list_curr->size == 0)
-		{
-			add_sa_interval(intv_list_curr, 0, fm_n);
+		if(intv_list_curr->size == 0) {                                                                  
+			add_sa_interval(intv_list_curr, 0, BWT->length-1);
 			z++;
 			num_matches = U - L + 1;
 		}
-		D[readLen - 1 - i].num_diff = z;
-		D[readLen - 1 - i].sa_intv_width = num_matches;
+		D[readLen-1-i].num_diff = z;                                                                     
 	}
-
-	D[readLen - 1].sa_list = intv_list_curr;
-	D[readLen].sa_intv_width = 0;
 	D[readLen].num_diff = ++z;
-	// free_sa_interval_list(intv_list_curr);
+	free_sa_interval_list(intv_list_curr);
 	free_sa_interval_list(intv_list_next);
 }
-
-void inexact_match_fm_raw(struct FMA *fm, char *read, int readLen, priority_heap_t *heap, sa_intv_list_t *precalc_sa_intervals,
-						  const aln_params_t *params, diff_lower_bound_t *D, diff_lower_bound_t *D_seed, alns_t *alns)
-{
+void calculate_d_fm(struct FMA *fm, char* read, int readLen, diff_lower_bound_t* D, aln_params_t* params) {
+	int z = 0;                                                                                             
+	bwtint_t L = 0, U, fm_n;
+	Fm_GetN(fm, &fm_n);
+	U=fm_n;                                                                                               
+	if(!params->is_multiref) {                                                               
+	}
+	sa_intv_list_t* intv_list_curr = (sa_intv_list_t*) calloc(1, sizeof(sa_intv_list_t));                 
+	sa_intv_list_t* intv_list_next = (sa_intv_list_t*) calloc(1, sizeof(sa_intv_list_t));                 
+	add_sa_interval(intv_list_curr, L, U);                                                                
+	for (int i = readLen-1; i >= 0; i--) {
+		unsigned char c = read[i]; 
+		int num_matches = 0;
+		if(c > 3) {
+			clear_sa_interval_list(intv_list_curr); 
+		} else {	
+			sa_intv_t* intv = intv_list_curr->first_intv;                                                 
+			for(int s = 0; s < intv_list_curr->size; s++) {
+				bwtint_t L[BASES_PER_NUCLEOTIDE] = { 0 }; 
+				bwtint_t U[BASES_PER_NUCLEOTIDE] = { 0 };
+				Occ8p(c,intv->L-1,intv->U,L,U,fm);        
+				for(int i=0; i<BASES_PER_NUCLEOTIDE; i++){
+					if (L[i] <= U[i]) {
+						num_matches += U[i] - L[i] + 1;
+						add_sa_interval(intv_list_next, L[i], U[i]);   
+					}
+				}
+				intv = intv->next_intv;                                                                   
+			}
+		}
+		sa_intv_list_t* tmp = intv_list_curr;
+		intv_list_curr = intv_list_next;                                                                  
+		intv_list_next = tmp;
+		clear_sa_interval_list(intv_list_next);                                                           
+		if(intv_list_curr->size == 0) {                                                                   
+			add_sa_interval(intv_list_curr, 0, fm_n);
+			z++;                                                                                          
+			num_matches = U - L + 1;                                                                      
+		}
+		D[readLen-1-i].num_diff = z;                                                                      
+	}
+	free_sa_interval_list(intv_list_curr);                                                                
+	free_sa_interval_list(intv_list_next);
+}
+sa_intv_list_t* calculate_d_fm2(sa_intv_list_t* precalc_sa_intervals_table, struct FMA *fm, char* read, int readLen, diff_lower_bound_t* D, aln_params_t* params) {
+	int z=0, sPos=readLen-1;                                                                              
+	bwtint_t L = 0, U, fm_n;
+	Fm_GetN(fm, &fm_n);
+	U=fm_n;                                                                                               
+	sa_intv_list_t* intv_list_curr = (sa_intv_list_t*) calloc(1, sizeof(sa_intv_list_t));                 
+	sa_intv_list_t* intv_list_next = (sa_intv_list_t*) calloc(1, sizeof(sa_intv_list_t));                 
+	if(params->use_precalc) {
+		int read_index = read2index(read, readLen);                                              
+		if(read_index >= 0) {
+			copy_sa_interval_list(intv_list_curr, &(precalc_sa_intervals_table[read_index]));
+		}
+	}
+	if(intv_list_curr->size){                                                                             
+		for(int i=sPos; i>sPos-PRECALC_INTERVAL_LENGTH; i--){                                             
+			D[readLen-1-i].num_diff = z;
+		}
+		sPos =sPos-PRECALC_INTERVAL_LENGTH;
+	}else{
+		add_sa_interval(intv_list_curr, L, U);                                                            
+	}                                       
+	for (int i = sPos; i >= 0; i--) {
+		unsigned char c = read[i];                                                                        
+		int num_matches = 0;
+		if(c > 3) {
+			clear_sa_interval_list(intv_list_curr); 
+		} else {
+			sa_intv_t* intv = intv_list_curr->first_intv;                                                 
+			for(int s = 0; s < intv_list_curr->size; s++) {
+				bwtint_t L[BASES_PER_NUCLEOTIDE] = { 0 };                                                 
+				bwtint_t U[BASES_PER_NUCLEOTIDE] = { 0 };
+				Occ8p(c,intv->L-1,intv->U,L,U,fm);                                                        
+				for(int i=0; i<BASES_PER_NUCLEOTIDE; i++){
+					if (L[i] <= U[i]) {
+						num_matches += U[i] - L[i] + 1;
+						add_sa_interval(intv_list_next, L[i], U[i]);                                      
+					}
+				}
+				intv = intv->next_intv;                                                                   
+			}
+		}
+		sa_intv_list_t* tmp = intv_list_curr;
+		intv_list_curr = intv_list_next;                                                                  
+		intv_list_next = tmp;
+		clear_sa_interval_list(intv_list_next);                                                           
+		if(intv_list_curr->size == 0) {                                                                   
+			z++;                                                                                          
+			if(params->use_precalc && i>PRECALC_INTERVAL_LENGTH) {                                        
+				int read_index = read2index(read, i);                                              
+				if(read_index >= 0) {
+					copy_sa_interval_list(intv_list_curr, &(precalc_sa_intervals_table[read_index]));
+				}
+			}
+			if(intv_list_curr->size){                                                                     
+				for(int j=i; j>i-PRECALC_INTERVAL_LENGTH; j--){
+					D[readLen-1-j].num_diff = z;
+				}
+				i =i-PRECALC_INTERVAL_LENGTH;
+			}else{
+				add_sa_interval(intv_list_curr, 0, fm_n);                                                 
+			}                               
+		}
+		D[readLen-1-i].num_diff = z;                                                                      
+	}
+	free_sa_interval_list(intv_list_next);
+	return intv_list_curr;                                                                                   
+}
+void inexact_match(bwt_t * BWT, char *read, int readLen, priority_heap_t* heap, sa_intv_list_t* precalc_sa_intervals,
+		const aln_params_t *params, diff_lower_bound_t* D, diff_lower_bound_t* D_seed, alns_t* alns) {
+}
+int seed_and_extend(sa_intv_list_t* precalc_sa_intervals_table, FILE* samFile, int cs, int ce, AUX *aux, struct FMA *fm, read_t* rPt, const aln_params_t *params){
+	jj("into...seed_and_extend cems-Len: %d\n",ce-cs);
+	int RUN=1000; 
+	double H=0.01;    
+	int pads=15;
+	int readLen=rPt->len;
+	char* read=rPt->rc;
+	char* qual=rPt->qual;
+	uint32_t tidx =0, toff =0, qlen =readLen;                              
+	uint8_t  flank[qlen+2*pads], rd[qlen+1], qu[qlen+1];
+	if((ce-cs) <(H*readLen)){                                              
+		jj("filted. CEMS: %d \n",ce-cs);
+		for(int i=0; i<qlen; i++){
+			rd[qlen-i-1] =RCP2asc[read[i]];                                
+			qu[i] =qual[i];                           
+		}
+		rd[qlen]='\0';
+		qu[qlen]='\0';
+		fprintf(samFile, "%s\t%d\t*\t0\t0\t*\t*\t0\t0\t", rPt->name, 4);
+		fprintf(samFile, "%s\t", rd);                
+		fprintf(samFile, "%s\t", qu);                
+		fprintf(samFile, "AS:i:%d\n", -999999);      
+		return;
+	}
+	uint8_t iFW=0;                                   
+	int xmS=0;                                       
 	bwtint_t fm_n;
 	Fm_GetN(fm, &fm_n);
-
-	int countN = 0;
-	for (int i = 0; i < readLen; i++)
-	{
-		if (read[i] > 3)
-			countN++;
-	}
-	if (countN > params->max_diff)
-	{
-		return;
-	}
-
-	heap_reset(heap);
-	if (precalc_sa_intervals != NULL)
-	{
-		if (precalc_sa_intervals->size != 0)
-		{
-			char aln_path[ALN_PATH_ALLOC] = {0};
-			sa_intv_t *intv = precalc_sa_intervals->first_intv;
-			for (int i = 0; i < precalc_sa_intervals->size; i++)
-			{
-				heap_push_s(heap, readLen - PRECALC_INTERVAL_LENGTH, intv->L, intv->U, 0, 0, 0, 0, 0, PRECALC_INTERVAL_LENGTH - 1, aln_path, params);
-				intv = intv->next_intv;
-			}
-		}
-		else
-		{
-			return;
+	jj("################################################################################################################ \n");
+	sa_intv_list_t* sa_intervals = NULL;
+	if(params->use_precalc) {
+		int read_index = read2index(read, ce);       
+		if(read_index >= 0) {
+			sa_intervals =(sa_intv_list_t*) calloc(1, sizeof(sa_intv_list_t));
+			copy_sa_interval_list(sa_intervals, &(precalc_sa_intervals_table[read_index]));
 		}
 	}
-	else
-	{
-		heap_push_s(heap, readLen, 0, fm_n, 0, 0, 0, 0, 0, 0, 0, params);
+	if(sa_intervals!=NULL && sa_intervals->size){
+		exact_match_bounded_fm2(fm, read, (ce-cs-2)-PRECALC_INTERVAL_LENGTH, 0, fm_n, (ce-1)-PRECALC_INTERVAL_LENGTH, &sa_intervals, params); 
+	}else{
+		exact_match_bounded_fm(fm, read, ce-cs, 0, fm_n, ce, &sa_intervals, params);        
 	}
-
-	int best_score = aln_score(params->max_diff + 1, params->max_gapo + 1, params->max_gape + 1, params);
-	int best_diff = params->max_diff + 1;
-	int max_diff = params->max_diff;
-	int num_best = 0;
-	int max_entries = 0;
-
-	int total_entries = 0;
-	int last_num_entries = 1;
-	int tid = 0;
-
-	int nbt0 = nbt;
-	while (heap->num_entries != 0)
-	{
-		total_entries += heap->num_entries - last_num_entries + 1;
-		last_num_entries = heap->num_entries;
-		if (heap->num_entries > max_entries)
-			max_entries = heap->num_entries;
-		if (heap->num_entries > params->max_entries)
-		{
-			break;
-		}
-		aln_entry_t e_;
-		heap_pop(heap, &e_);
-		aln_entry_t *e = &e_;
-		nbt++;
-
-		if (e->score > (best_score + params->mm_score))
-		{
-			break;
-		}
-		int diff_left = max_diff - e->num_mm - e->num_gapo - e->num_gape;
-		if (diff_left < 0)
-		{
-			continue;
-		}
-		if ((e->i > 0) && (diff_left < D[e->i - 1].num_diff))
-		{
-			continue;
-		}
-		int diff_left_seed = params->max_diff_seed - e->num_mm - e->num_gapo - e->num_gape;
-		int seed_index = e->i - (readLen - params->seed_length);
-		if ((seed_index > 0) && (diff_left_seed < D_seed[seed_index - 1].num_diff))
-		{
-			continue;
-		}
-
-		if (e->i == 0)
-		{
-			int score = aln_score(e->num_mm, e->num_gapo, e->num_gape, params);
-			if (alns->num_entries == 0)
-			{
-				best_score = score;
-				best_diff = e->num_mm + e->num_gapo + e->num_gape;
-				max_diff = (best_diff + 1 > params->max_diff) ? params->max_diff : best_diff + 1;
+	int sz=0, z=0, zz=0; 
+	sa_intv_t* intv =sa_intervals->first_intv;
+	for(int i=0; i<sa_intervals->size; i++){
+		sa_intv_t* tmp =intv;
+		sz =sz+(tmp->U-tmp->L+1); 
+		intv =intv->next_intv;
+	}
+	jj("Read-Len: %u   CEMS-LEN: %d   Rd-Off: %d, %d   intvSz: %d   SZ: %d   FIRST-CEMS-SA: %u, %u \n",
+			readLen, ce-cs, cs, ce, sa_intervals->size, sz, sa_intervals->first_intv->L, sa_intervals->first_intv->U);
+	bwtint_t woff;            
+	fasta_annotations_t* annotations =aux->annotations;
+	wavefront_aligner_attr_t attributes = wavefront_aligner_attr_default;
+	attributes.distance_metric = gap_affine;
+	attributes.affine_penalties.match = 0;
+	attributes.affine_penalties.mismatch = 4;
+	attributes.affine_penalties.gap_opening = 6;
+	attributes.affine_penalties.gap_extension = 2;
+	attributes.alignment_form.span = alignment_endsfree;
+	attributes.alignment_form.pattern_begin_free = 0;
+	attributes.alignment_form.pattern_end_free = 0;
+	attributes.alignment_form.text_begin_free = readLen; 
+	attributes.alignment_form.text_end_free = readLen;
+  	wavefront_aligner_t* const wf_aligner = wavefront_aligner_new(&attributes);
+	Aln * aln = (Aln*) calloc(sz, sizeof(Aln));
+	int bSC=-999999;         
+	int sSC=-999999;         
+	int run=0;               
+	intv =sa_intervals->first_intv;
+	for(int i=0; i<sa_intervals->size; i++){ 
+		sa_intv_t* tmp =intv;
+		for(bwtint_t j=tmp->L; j<=tmp->U; j++){
+			if(bSC==0 || run>RUN){ break;}
+			xmS =0;
+			woff =Fm_Lookup(fm, j);               
+			zz++;
+			jj("   i:%d /%d (z:%d CEMS-LEN:%d)   WholePos: %ld \n", zz, sz, z, ce-cs, woff);
+			iFW =0;
+			if(woff >(fm_n/2)){                   
+				iFW =1;
+				woff =fm_n-woff-(readLen-cs);
+				jj("cov2fw...woff: %ld \n", woff);
+			}else{
+				woff =woff-(cs);                  
 			}
-			if (score == best_score)
-			{
-				num_best += e->U - e->L + 1;
-			}
-			else if (num_best > params->max_best)
-			{
-				break;
-			}
-			add_alignment(e, e->L, e->U, score, alns, params);
-			continue;
-		}
-		else if (diff_left == 0)
-		{
-			sa_intv_list_t *sa_intervals;
-			if (exact_match_bounded_fm(fm, read, readLen, e->L, e->U, e->i - 1, &sa_intervals, params) > 0)
-			{
-				int score = aln_score(e->num_mm, e->num_gapo, e->num_gape, params);
-				if (alns->num_entries == 0)
-				{
-					best_score = score;
-					best_diff = e->num_mm + e->num_gapo + e->num_gape;
-					max_diff = (best_diff + 1 > params->max_diff) ? params->max_diff : best_diff + 1;
-				}
-				if (score == best_score)
-				{
-					sa_intv_t *intv = sa_intervals->first_intv;
-					for (int k = 0; k < sa_intervals->size; k++)
-					{
-						num_best += intv->U - intv->L + 1;
-						intv = intv->next_intv;
-					}
-				}
-				else if (num_best > params->max_best)
-				{
-					break;
-				}
-
-				e->aln_length += e->i;
-				sa_intv_t *intv = sa_intervals->first_intv;
-				for (int k = 0; k < sa_intervals->size; k++)
-				{
-					add_alignment(e, intv->L, intv->U, score, alns, params);
-					intv = intv->next_intv;
+			unsigned char* flank = Fm_Extract(fm, woff+1-pads, readLen+2*pads);
+			int strimI=0, etrimI=0, nD=0, nI=0, nX=0, nos=cs, noe=ce, wnD=0, wnI=0;
+			for(int i=0; i<readLen+2*pads; i++){
+				jj("%c",iupacChar[flank[i]]); 
+				flank[i]=grayVal[flank[i]];                                          
+				if(flank[i]&(flank[i]-1)){ 
+					nX=(nX %readLen) +readLen;
 				}
 			}
-
-			free_sa_interval_list(sa_intervals);
-			continue;
-		}
-
-		long L[ALPHABET_SIZE] = {0};
-		long U[ALPHABET_SIZE] = {0};
-		int alphabet_size = ALPHABET_SIZE;
-		int is_multiref = params->is_multiref;
-		if (params->is_multiref)
-		{
-			Occ16p(e->L - 1, e->U, L, U, fm);
-			for (int i = 1; i < ALPHABET_SIZE; i++)
-			{
-				if (U[i] - L[i] + 1 == 0)
-				{
-					continue;
+			jj("\n");
+			if(iFW){
+				for(int i=0; i<qlen; i++){
+					jj("%c",pan2asc[nt4_complement[read[readLen-i-1]]]); 
+					rd[i] =nt4_gray_val[nt4_complement[read[readLen-i-1]]];          
+					qu[i] =qual[i];
+				}	
+			}else{
+				for(int i=0; i<qlen; i++){
+					jj("%c",pan2asc[read[i]]); 
+					rd[i] =nt4_gray_val[read[i]]; 
+					qu[readLen-i-1] =qual[i];
 				}
 			}
-		}
-		else
-		{
-		}
-
-		int allow_diff = 1;
-		int allow_indels = 1;
-		int allow_mm = 1;
-		int allow_open = 1;
-		int allow_extend = 1;
-
-		if (e->i - 1 > 0)
-		{
-			if ((diff_left - 1) < D[e->i - 2].num_diff)
-			{
-				allow_diff = 0;
+			jj("\n");
+			rd[qlen]='\0';
+			qu[qlen]='\0';
+  			wavefront_align(wf_aligner,rd,readLen,flank,readLen+2*pads);
+			int score =wf_aligner->cigar->score;
+			jj("SCORE: %d \n", score);
+			if(score>=bSC) {
+				sSC =bSC;                                     
+				bSC =score;
+				run =0;	                                      
+			}else{
+				run++;
+				continue;                                     
 			}
-			else if (((D[e->i - 1].num_diff == diff_left - 1) && (D[e->i - 2].num_diff == diff_left - 1)) && (D[e->i - 1].sa_intv_width == D[e->i - 2].sa_intv_width))
-			{
-				allow_mm = 0;
-			}
-		}
-
-		if (seed_index - 1 > 0)
-		{
-			if ((diff_left_seed - 1) < D_seed[seed_index - 2].num_diff)
-			{
-				allow_diff = 0;
-			}
-			else if ((D_seed[seed_index - 1].num_diff == diff_left_seed - 1) && (D_seed[seed_index - 2].num_diff == diff_left_seed - 1) && (D_seed[seed_index - 1].sa_intv_width == D_seed[seed_index - 2].sa_intv_width))
-			{
-				allow_mm = 0;
-			}
-		}
-
-		int tmp = e->num_gapo + e->num_gape;
-		if ((e->i - 1 < (params->no_indel_length + tmp)) || ((readLen - (e->i - 1)) < (params->no_indel_length + tmp)))
-		{
-			allow_indels = 0;
-		}
-		if ((e->num_gapo >= params->max_gapo) && (e->num_gape >= params->max_gape))
-		{
-			allow_indels = 0;
-		}
-		if ((e->num_gapo >= params->max_gapo))
-		{
-			allow_open = 0;
-		}
-		if ((e->num_gape >= params->max_gape))
-		{
-			allow_extend = 0;
-		}
-
-		if (allow_diff && allow_indels)
-		{
-			if (e->state == STATE_I)
-			{
-				if (allow_extend)
-				{
-					heap_push_s(heap, e->i - 1, e->L, e->U, e->num_mm, e->num_gapo, e->num_gape + 1, STATE_I, e->num_snps, e->aln_length, e->aln_path, params);
-				}
-			}
-			else
-			{
-				if (allow_open && (e->state == STATE_M))
-				{
-					heap_push_s(heap, e->i - 1, e->L, e->U, e->num_mm, e->num_gapo + 1, e->num_gape, STATE_I, e->num_snps, e->aln_length, e->aln_path, params);
-				}
-				for (int j = 1; j < alphabet_size; j++)
-				{
-					if (L[j] <= U[j])
-					{
-						if (e->state == STATE_M)
-						{
-							if (allow_open)
-							{
-								heap_push_s(heap, e->i, L[j], U[j], e->num_mm, e->num_gapo + 1, e->num_gape, STATE_D,
-											e->num_snps, e->aln_length, e->aln_path, params);
-							}
-						}
-						else
-						{
-							if (allow_extend)
-							{
-								heap_push_s(heap, e->i, L[j], U[j], e->num_mm, e->num_gapo, e->num_gape + 1, STATE_D,
-											e->num_snps, e->aln_length, e->aln_path, params);
-							}
-						}
+			cigar_t* const cigar =wf_aligner->cigar;
+			char* const operations = cigar->operations;
+  			const int begin_offset = cigar->begin_offset;
+  			const int end_offset = cigar->end_offset;
+			if(operations[begin_offset]=='I'){ 
+				for(int i=begin_offset; i<end_offset; ++i) {
+					if(operations[i]=='I'){
+						++strimI;
+					}else{
+						break; 
 					}
 				}
 			}
+			if(operations[end_offset-1]=='I'){ 
+				for(int i=end_offset-1; i>=begin_offset; --i){
+					if(operations[i]=='I'){
+						++etrimI;
+					}else{
+						break; 
+					}
+				}
+			}
+			int clen =end_offset -begin_offset -strimI -etrimI;                
+			char rawCigar[clen];
+			for (int i=begin_offset+strimI,j=0; i<end_offset-etrimI; ++i) {
+				if(operations[i]=='I'){ 
+					rawCigar[j]='D'; 
+					wnD++;
+				}else if(operations[i]=='D'){ 
+					rawCigar[j]='I'; 
+					wnI++;
+				}else{
+					rawCigar[j] =operations[i]; 
+					if(rawCigar[j]=='X'){       
+						nX++;
+						if(xmS<qu[j+wnD]){ xmS =qu[j+wnD]; }                   
+					}
+				}
+				jj("%c", rawCigar[j]);                                         
+				++j;
+			}
+			jj("\n");
+			char* cigarStr =CigarFormat3(rawCigar, readLen+wnD);
+			jj("CIGAR: %s \n", cigarStr);
+			if(iFW){
+				noe =readLen-cs;                                
+				nos =readLen-ce;
+			}
+			for(int i=0; i<noe; i++){
+				switch (rawCigar[i]){
+					case 'D': nD++; break;             
+					case 'I': nI++; break;
+				}
+			}
+			for(int k=0; k<annotations->num_seq; k++){ 
+				if((woff >=annotations->seq_anns[k].start_index) && (woff <=annotations->seq_anns[k].end_index)){
+					tidx =k; break;                    
+				}
+			}
+			toff =woff - annotations->seq_anns[tidx].start_index+1;     
+			int tidx2 =tidx;
+			if(tidx >193){
+				jj("bubble.tidx: %d   toff: %u \n", tidx, toff);
+				bubble_t bu =aux->bubble[tidx-194];
+				tidx =bu.ann;                                           
+				if(toff >= 1 && toff <= bu.B_minus_A)                   
+				{   
+					toff =toff + bu.A - 1;
+				}else if(toff >=bu.B_minus_A + bu.alt_len + 1 && toff <=bu.B_minus_A + bu.alt_len + bu.D_minus_C + 1)
+				{   
+					toff =toff + bu.C - (bu.B_minus_A + bu.alt_len + 1);
+				}else
+				{   
+					toff =bu.B_minus_A + bu.A + (bu.ref_len / 2) - 1;
+				}
+				jj("tidx...bu2chr: Chr%d    toff: %d \n", tidx, toff);
+				jj("### A:%ld  B-A:%ld  C:%ld  D-C:%ld  ref-len:%d  alt-len:%d \n", bu.A, bu.B_minus_A, bu.C, bu.D_minus_C, bu.ref_len, bu.alt_len); 
+				jj("### start:%ld  end:%ld \n", annotations->seq_anns[tidx2].start_index, annotations->seq_anns[tidx2].end_index);
+				bSC =sSC;        
+				score =score-33; 
+			}
+			jj("CEMS-Chr: %s   Pos: %u   iFW: %d \n", annotations->seq_anns[tidx].name, toff, iFW);
+			uint32_t _toff =toff;                                       
+			toff =toff-pads;
+			jj("nos:%d   noe:%d   nwI:%d   nwD:%d   nX:%d   xmS:%d \n", nos,noe,wnI,wnD,nX,xmS);
+			jj("Final-Chr: %s   Pos: %u \n", annotations->seq_anns[tidx].name, _toff+nI-nD);    
+			aln[z].chr =tidx;                                                                   
+			aln[z].pos =_toff+nI-nD;
+			aln[z].cigar =cigarStr;
+			aln[z].score =score;
+			aln[z].ifw =iFW;
+			aln[z].nx =nX;   
+			aln[z].xmS =xmS; 
+			z++;             
 		}
-
-		int c = read[e->i - 1];
-		if (allow_diff && allow_mm)
-		{
-			for (int j = 1; j < alphabet_size; j++)
-			{
-				if (L[j] <= U[j])
-				{
-					int is_mm = 0;
-					if (is_multiref)
-					{
-						if ((c > 3) || (j == 10) /*N*/ || ((nt4_gray_val[c] & grayVal[j]) == 0))
-						{
-							is_mm = 1;
-						}
-					}
-					else
-					{
-						if ((c > 3) || (c != (j - 1)))
-						{
-							is_mm = 1;
-						}
-					}
-					if (!is_mm)
-					{
-						heap_push_s(heap, e->i - 1, L[j], U[j], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-					}
-					else
-					{
-						heap_push_s(heap, e->i - 1, L[j], U[j], e->num_mm + 1, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-					}
-				}
-			}
+		intv =intv->next_intv;   
+	}
+	free_sa_interval_list(sa_intervals);
+  	wavefront_aligner_delete(wf_aligner);
+	int ii=0, done=0, nTop1=0, nTop2=0;
+	for(int i=0; i<z; i++){                          
+		if(!done && aln[i].score==bSC){              
+			ii =i;
+			done =1;
 		}
-		else if (c < 4)
-		{
-			if (is_multiref)
-			{
-				for (int b = 0; b < BASES_PER_NUCLEOTIDE; b++)
-				{
-					unsigned char base = nucl_bases_table[c][b];
-					if (L[base] <= U[base])
-					{
-						heap_push_s(heap, e->i - 1, L[base], U[base], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_snp[base]), e->aln_length, e->aln_path, params);
-					}
-				}
-			}
-			else
-			{
-				if (L[c + 1] <= U[c + 1])
-				{
-					heap_push_s(heap, e->i - 1, L[c + 1], U[c + 1], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-								e->num_snps, e->aln_length, e->aln_path, params);
-				}
-			}
+		if(aln[i].score==bSC){
+			nTop1++;  
+		}else{
+			nTop2++;  
 		}
 	}
+	int mapq=0;
+	if(z){            
+		if(aln[ii].chr >21){  
+			mapq =3;
+		}else{
+			if(nTop1 >1){     
+				mapq =0;
+			}else if(nTop2 ==0){  
+				if( (aln[ii].xmS > 62) || (aln[ii].nx >= readLen) ){
+					mapq =37;                         
+					if(aln[ii].score < -32){
+						mapq =23;
+					}
+				}else{
+					mapq =23;                            
+				}
+			}else{
+				if( (aln[ii].xmS > 62) || (aln[ii].nx >= readLen) ){
+					mapq =37;                         
+					if(aln[ii].score < -32){
+						mapq =23;
+					}
+				}else{
+					mapq =23;                            
+				}
+			}
+		}
+	}             
+	iFW=aln[ii].ifw;                                 
+	if(iFW){
+		for(int i=0; i<readLen; i++){
+			rd[i] =iupacChar[nt4_gray[nt4_complement[read[readLen-i-1]]]]; 
+			qu[i] =qual[i];
+		}    
+	}else{
+		for(int i=0; i<readLen; i++){
+			rd[i] =iupacChar[nt4_gray[read[i]]]; 
+			qu[readLen-i-1] =qual[i];    
+		}                           
+	}
+	rd[qlen]=0;
+	qu[qlen]=0;
+	if(z) {jj("---bestAln (ii:%d sz:%d z:%d)  Chr: %s  Pos: %u  MapQ: %d  Score: %d  CIGAR: %s \n", ii, sz, z, annotations->seq_anns[aln[ii].chr].name, aln[ii].pos, mapq, aln[ii].score, aln[ii].cigar);}
+	if(z) {
+		fprintf(samFile, "%s\t%d\t%s\t%u\t", rPt->name, (aln[ii].ifw)?0:16, annotations->seq_anns[aln[ii].chr].name, aln[ii].pos); 
+		fprintf(samFile, "%d\t", mapq);              
+		fprintf(samFile, "%s\t", aln[ii].cigar);     
+		fprintf(samFile, "*\t0\t0\t");               
+		fprintf(samFile, "%s\t", rd);                
+		fprintf(samFile, "%s\t", qu);                
+		fprintf(samFile, "AS:i:%d\t", aln[ii].score);                
+		fprintf(samFile, "XM:i:%d\n", aln[ii].nx %readLen);
+	}else{
+		fprintf(samFile, "%s\t%d\t*\t0\t0\t*\t*\t0\t0\t", rPt->name, 4);
+		fprintf(samFile, "%s\t", rd);                
+		fprintf(samFile, "%s\t", qu);                
+		fprintf(samFile, "AS:i:%d\n", -999999);                
+	}
+	jj("sz: %d   z: %d \n", sz, z);
+	for(int i=0; i<z; i++){
+		free(aln[i].cigar);                                 
+	}
+	free(aln);
 }
-
-int inexact_match_fm_sid(struct FMA *fm, char *read, int readLen, priority_heap_t *heap, sa_intv_list_t *precalc_sa_intervals,
-						 const aln_params_t *params, diff_lower_bound_t *D, diff_lower_bound_t *D_seed, alns_t *alns)
-{
-
-	int cdlen = params->no_e - params->no_s + 1;
-
-	bwtint_t fm_n;
-	Fm_GetN(fm, &fm_n);
-
-	int countN = 0;
-	for (int i = 0; i < readLen; i++)
-	{
-		if (read[i] > 3)
-			countN++;
+inline char* CigarFormat3(char rawCigar[], int clen){
+	char* res =(char *)calloc(2500, 1);                
+	char last=0;
+	int n=0, k=0;
+	for(int i=0; i<clen; i++){
+		char c=rawCigar[i];
+		if(c=='X') {c='M';} 
+		if(c!=last && i!=0){
+			char str[10];                       
+			sprintf(str, "%d", n);               
+			for(int j=0; j<strlen(str); j++){        
+				res[k++] =str[j];
+			}
+			res[k++] =last; 
+			n=0;                                 
+		}
+		n++;
+		if(i==clen-1 && n!=0){                   
+			char str[10];
+			sprintf(str, "%d", n);
+			for(int j=0; j<strlen(str); j++){        
+				res[k++] =str[j];
+			}
+			res[k++] =last;
+		}
+		last=c;
 	}
-	if (countN > params->max_diff)
-	{
-		return;
-	}
-
-	heap_reset(heap);
-	if (precalc_sa_intervals != NULL)
-	{
-		if (precalc_sa_intervals->size != 0)
-		{
-			char aln_path[ALN_PATH_ALLOC] = {0};
-			sa_intv_t *intv = precalc_sa_intervals->first_intv;
-			for (int i = 0; i < precalc_sa_intervals->size; i++)
-			{
-				heap_push_s(heap, readLen - PRECALC_INTERVAL_LENGTH, intv->L, intv->U, 0, 0, 0, 0, 0, PRECALC_INTERVAL_LENGTH - 1, aln_path, params);
-				intv = intv->next_intv;
-			}
-		}
-		else
-		{
-			return;
-		}
-	}
-	else
-	{
-		heap_push_s(heap, readLen, 0, fm_n, 0, 0, 0, 0, 0, 0, 0, params);
-	}
-
-	int best_score = aln_score(params->max_diff + 1, params->max_gapo + 1, params->max_gape + 1, params);
-	int best_diff = params->max_diff + 1;
-	int max_diff = params->max_diff;
-	int num_best = 0;
-	int max_entries = 0;
-
-	int total_entries = 0;
-	int last_num_entries = 1;
-	int tid = 0;
-
-	long nbt0 = nbt;
-	while (heap->num_entries != 0)
-	{
-		total_entries += heap->num_entries - last_num_entries + 1;
-		last_num_entries = heap->num_entries;
-
-		if (heap->num_entries > max_entries)
-			max_entries = heap->num_entries;
-		if (heap->num_entries > params->max_entries)
-		{
-			break;
-		}
-
-		aln_entry_t e_;
-		heap_pop(heap, &e_);
-		aln_entry_t *e = &e_;
-		nbt++;
-		if (e->i == readLen - cdlen)
-		{
-			heap_reset(heap);
-		}
-
-		if (e->score > (best_score + params->mm_score))
-		{
-			break;
-		}
-		int diff_left = max_diff - e->num_mm - e->num_gapo - e->num_gape;
-		if (diff_left < 0)
-		{
-			continue;
-		}
-		if ((e->i > 0) && (diff_left < D[e->i - 1].num_diff))
-		{
-			continue;
-		}
-
-		int diff_left_seed = params->max_diff_seed - e->num_mm - e->num_gapo - e->num_gape;
-		int seed_index = e->i - (readLen - params->seed_length);
-
-		if (e->i == 0)
-		{
-			int score = aln_score(e->num_mm, e->num_gapo, e->num_gape, params);
-			if (alns->num_entries == 0)
-			{
-				best_score = score;
-				best_diff = e->num_mm + e->num_gapo + e->num_gape;
-				max_diff = (best_diff + 1 > params->max_diff) ? params->max_diff : best_diff + 1;
-			}
-			if (score == best_score)
-			{
-				num_best += e->U - e->L + 1;
-			}
-			else if (num_best > params->max_best)
-			{
-				break;
-			}
-			add_alignment(e, e->L, e->U, score, alns, params);
-			continue;
-		}
-		else if (diff_left == 0)
-		{
-			sa_intv_list_t *sa_intervals;
-			if (exact_match_bounded_fm(fm, read, readLen, e->L, e->U, e->i - 1, &sa_intervals, params) > 0)
-			{
-				int score = aln_score(e->num_mm, e->num_gapo, e->num_gape, params);
-				if (alns->num_entries == 0)
-				{
-					best_score = score;
-					best_diff = e->num_mm + e->num_gapo + e->num_gape;
-					max_diff = (best_diff + 1 > params->max_diff) ? params->max_diff : best_diff + 1;
-				}
-				if (score == best_score)
-				{
-					sa_intv_t *intv = sa_intervals->first_intv;
-					for (int k = 0; k < sa_intervals->size; k++)
-					{
-						num_best += intv->U - intv->L + 1;
-						intv = intv->next_intv;
-					}
-				}
-				else if (num_best > params->max_best)
-				{
-					break;
-				}
-
-				e->aln_length += e->i;
-				sa_intv_t *intv = sa_intervals->first_intv;
-				for (int k = 0; k < sa_intervals->size; k++)
-				{
-					add_alignment(e, intv->L, intv->U, score, alns, params);
-					intv = intv->next_intv;
-				}
-			}
-
-			free_sa_interval_list(sa_intervals);
-			continue;
-		}
-
-		long L[ALPHABET_SIZE] = {0};
-		long U[ALPHABET_SIZE] = {0};
-		int alphabet_size = ALPHABET_SIZE;
-		int is_multiref = params->is_multiref;
-		if (params->is_multiref)
-		{
-			Occ16p(e->L - 1, e->U, L, U, fm);
-			for (int i = 1; i < ALPHABET_SIZE; i++)
-			{
-				if (U[i] - L[i] + 1 == 0)
-				{
-					continue;
-				}
-			}
-		}
-		else
-		{
-		}
-
-		int allow_diff = 1;
-		int allow_indels = 1;
-		int allow_mm = 1;
-		int allow_open = 1;
-		int allow_extend = 1;
-		if ((readLen - e->i) < cdlen)
-		{
-			allow_diff = 0;
-			allow_indels = 0;
-			allow_mm = 0;
-			allow_open = 0;
-			allow_extend = 0;
-		}
-		if (e->i - 1 > 0)
-		{
-			if ((diff_left - 1) < D[e->i - 2].num_diff)
-			{
-				allow_diff = 0;
-			}
-			else if (((D[e->i - 1].num_diff == diff_left - 1) && (D[e->i - 2].num_diff == diff_left - 1)) && (D[e->i - 1].sa_intv_width == D[e->i - 2].sa_intv_width))
-			{
-				allow_mm = 0;
-			}
-		}
-		int tmp = e->num_gapo + e->num_gape;
-		if ((e->i - 1 < (params->no_indel_length + tmp)) || ((readLen - (e->i - 1)) < (params->no_indel_length + tmp)))
-		{
-			allow_indels = 0;
-		}
-		if ((e->num_gapo >= params->max_gapo) && (e->num_gape >= params->max_gape))
-		{
-			allow_indels = 0;
-		}
-		if ((e->num_gapo >= params->max_gapo))
-		{
-			allow_open = 0;
-		}
-		if ((e->num_gape >= params->max_gape))
-		{
-			allow_extend = 0;
-		}
-
-		if (allow_diff && allow_indels)
-		{
-			if (e->state == STATE_I)
-			{
-				if (allow_extend)
-				{
-					heap_push_s(heap, e->i - 1, e->L, e->U, e->num_mm, e->num_gapo, e->num_gape + 1, STATE_I, e->num_snps, e->aln_length, e->aln_path, params);
-				}
-			}
-			else
-			{
-				if (allow_open && (e->state == STATE_M))
-				{
-					heap_push_s(heap, e->i - 1, e->L, e->U, e->num_mm, e->num_gapo + 1, e->num_gape, STATE_I, e->num_snps, e->aln_length, e->aln_path, params);
-				}
-				for (int j = 1; j < alphabet_size; j++)
-				{
-					if (L[j] <= U[j])
-					{
-						if (e->state == STATE_M)
-						{
-							if (allow_open)
-							{
-								heap_push_s(heap, e->i, L[j], U[j], e->num_mm, e->num_gapo + 1, e->num_gape, STATE_D,
-											e->num_snps, e->aln_length, e->aln_path, params);
-							}
-						}
-						else
-						{
-							if (allow_extend)
-							{
-								heap_push_s(heap, e->i, L[j], U[j], e->num_mm, e->num_gapo, e->num_gape + 1, STATE_D,
-											e->num_snps, e->aln_length, e->aln_path, params);
-							}
-						}
-					}
-				}
-			}
-		}
-
-		int c = read[e->i - 1];
-		if (allow_diff && allow_mm)
-		{
-			for (int j = 1; j < alphabet_size; j++)
-			{
-				if (j == 1 || j == 3 || j == 7 || j == 15)
-				{
-					continue;
-				}
-				if (L[j] <= U[j])
-				{
-					int is_mm = 0;
-					if (is_multiref)
-					{
-						if ((c > 3) || (j == 10) /*N*/ || ((nt4_gray_val[c] & grayVal[j]) == 0))
-						{
-							is_mm = 1;
-						}
-					}
-					else
-					{
-						if ((c > 3) || (c != (j - 1)))
-						{
-							is_mm = 1;
-						}
-					}
-					if (!is_mm)
-					{
-						heap_push_s(heap, e->i - 1, L[j], U[j], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-					}
-					else
-					{
-						heap_push_s(heap, e->i - 1, L[j], U[j], e->num_mm + 1, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-					}
-				}
-			}
-			for (int i = 1; i < 5; i++)
-			{
-				int j = pow(2, i) - 1;
-				if (L[j] <= U[j])
-				{
-					int is_mm = 0;
-					if (is_multiref)
-					{
-						if ((c > 3) || (j == 10) /*N*/ || ((nt4_gray_val[c] & grayVal[j]) == 0))
-						{
-							is_mm = 1;
-						}
-					}
-					else
-					{
-						if ((c > 3) || (c != (j - 1)))
-						{
-							is_mm = 1;
-						}
-					}
-					if (!is_mm)
-					{
-						heap_push_s(heap, e->i - 1, L[j], U[j], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-					}
-					else
-					{
-						heap_push_s(heap, e->i - 1, L[j], U[j], e->num_mm + 1, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-					}
-				}
-			}
-		}
-		else if (c < 4)
-		{
-			if (is_multiref)
-			{
-				for (int b = 0; b < BASES_PER_NUCLEOTIDE; b++)
-				{
-					unsigned char base = nucl_bases_table[c][b];
-					if (base == 1 || base == 3 || base == 7 || base == 15)
-					{
-						continue;
-					}
-					if (L[base] <= U[base])
-					{
-						heap_push_s(heap, e->i - 1, L[base], U[base], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_snp[base]), e->aln_length, e->aln_path, params);
-					}
-				}
-				unsigned char base = nt4_gray[c];
-				if (L[base] <= U[base])
-				{
-					heap_push_s(heap, e->i - 1, L[base], U[base], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-								e->num_snps + (is_snp[base]), e->aln_length, e->aln_path, params);
-				}
-			}
-			else
-			{
-				if (L[c + 1] <= U[c + 1])
-				{
-					heap_push_s(heap, e->i - 1, L[c + 1], U[c + 1], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-								e->num_snps, e->aln_length, e->aln_path, params);
-				}
-			}
-		}
-	}
-	return 0;
+	return res; 
 }
-
-int inexact_match_fm_sid2(struct FMA *fm, char *read, int readLen, priority_heap_t *heap, sa_intv_list_t *precalc_sa_intervals,
-						  const aln_params_t *params, diff_lower_bound_t *D, diff_lower_bound_t *D_seed, alns_t *alns)
-{
-
-	if (D[readLen - 1].num_diff == 0)
-	{
-		sa_intv_t *intv = D[readLen - 1].sa_list->first_intv;
-		aln_entry_t a_;
-		memset(a_.aln_path, STATE_M, readLen);
-		a_.num_mm = 0;
-		a_.num_gapo = 0;
-		a_.num_gape = 0;
-		a_.num_snps = 0;
-		a_.L = -1;
-		a_.U = -1;
-		a_.score = 0;
-		a_.aln_length = readLen;
-		for (int k = 0; k < D[readLen - 1].sa_list->size; k++)
-		{
-			add_alignment(&a_, intv->L, intv->U, 0, alns, params);
-			intv = intv->next_intv;
-		}
-		free_sa_interval_list(D[readLen - 1].sa_list);
-		return;
-	}
-
-	int cdlen = params->no_e - params->no_s + 1;
-
-	bwtint_t fm_n;
-	Fm_GetN(fm, &fm_n);
-
-	int countN = 0;
-	for (int i = 0; i < readLen; i++)
-	{
-		if (read[i] > 3)
-			countN++;
-	}
-	if (countN > params->max_diff)
-	{
-		return;
-	}
-
-	heap_reset(heap);
-	if (precalc_sa_intervals != NULL)
-	{
-		if (precalc_sa_intervals->size != 0)
-		{
-			char aln_path[ALN_PATH_ALLOC] = {0};
-			sa_intv_t *intv = precalc_sa_intervals->first_intv;
-			for (int i = 0; i < precalc_sa_intervals->size; i++)
-			{
-				heap_push_s(heap, readLen - PRECALC_INTERVAL_LENGTH, intv->L, intv->U, 0, 0, 0, 0, 0, PRECALC_INTERVAL_LENGTH - 1, aln_path, params);
-				intv = intv->next_intv;
-			}
-		}
-		else
-		{
-			return;
-		}
-	}
-	else
-	{
-		heap_push_s(heap, readLen, 0, fm_n, 0, 0, 0, 0, 0, 0, 0, params);
-	}
-
-	int best_score = aln_score(params->max_diff + 1, params->max_gapo + 1, params->max_gape + 1, params);
-	int best_diff = params->max_diff + 1;
-	int max_diff = params->max_diff;
-	int num_best = 0;
-	int max_entries = 0;
-
-	int total_entries = 0;
-	int last_num_entries = 1;
-	int tid = 0;
-
-	long nbt0 = nbt;
-	while (heap->num_entries != 0)
-	{
-		total_entries += heap->num_entries - last_num_entries + 1;
-		last_num_entries = heap->num_entries;
-
-		if (heap->num_entries > max_entries)
-			max_entries = heap->num_entries;
-		if (heap->num_entries > params->max_entries)
-		{
-			break;
-		}
-
-		aln_entry_t e_;
-		heap_pop(heap, &e_);
-		aln_entry_t *e = &e_;
-		nbt++;
-		if (e->i == readLen - cdlen)
-		{
-			heap_reset(heap);
-		}
-
-		if (e->score > (best_score + params->mm_score))
-		{
-			break;
-		}
-		int diff_left = max_diff - e->num_mm - e->num_gapo - e->num_gape;
-		if (diff_left < 0)
-		{
-			continue;
-		}
-		if ((e->i > 0) && (diff_left < D[e->i - 1].num_diff))
-		{
-			continue;
-		}
-		int diff_left_seed = params->max_diff_seed - e->num_mm - e->num_gapo - e->num_gape;
-		int seed_index = e->i - (readLen - params->seed_length);
-
-		if (e->i == 0)
-		{
-			int score = aln_score(e->num_mm, e->num_gapo, e->num_gape, params);
-			if (alns->num_entries == 0)
-			{
-				best_score = score;
-				best_diff = e->num_mm + e->num_gapo + e->num_gape;
-				max_diff = (best_diff + 1 > params->max_diff) ? params->max_diff : best_diff + 1;
-			}
-			if (score == best_score)
-			{
-				num_best += e->U - e->L + 1;
-			}
-			else if (num_best > params->max_best)
-			{
-				break;
-			}
-			add_alignment(e, e->L + 10000000000, e->U + 10000000000, score, alns, params);
-			continue;
-		}
-		else if (diff_left == 0)
-		{
-			sa_intv_list_t *sa_intervals;
-			if (exact_match_bounded_fm(fm, read, readLen, e->L, e->U, e->i - 1, &sa_intervals, params) > 0)
-			{
-				int score = aln_score(e->num_mm, e->num_gapo, e->num_gape, params);
-				if (alns->num_entries == 0)
-				{
-					best_score = score;
-					best_diff = e->num_mm + e->num_gapo + e->num_gape;
-					max_diff = (best_diff + 1 > params->max_diff) ? params->max_diff : best_diff + 1;
-				}
-				if (score == best_score)
-				{
-					sa_intv_t *intv = sa_intervals->first_intv;
-					for (int k = 0; k < sa_intervals->size; k++)
-					{
-						num_best += intv->U - intv->L + 1;
-						intv = intv->next_intv;
-					}
-				}
-				else if (num_best > params->max_best)
-				{
-					break;
-				}
-
-				e->aln_length += e->i;
-				sa_intv_t *intv = sa_intervals->first_intv;
-				for (int k = 0; k < sa_intervals->size; k++)
-				{
-					add_alignment(e, intv->L + 10000000000, intv->U + 10000000000, score, alns, params);
-					intv = intv->next_intv;
-				}
-			}
-
-			free_sa_interval_list(sa_intervals);
-			continue;
-		}
-
-		long L[ALPHABET_SIZE] = {0};
-		long U[ALPHABET_SIZE] = {0};
-		int alphabet_size = ALPHABET_SIZE;
-		int is_multiref = params->is_multiref;
-		if (params->is_multiref)
-		{
-			Occ16p(e->L - 1, e->U, L, U, fm);
-			for (int i = 1; i < ALPHABET_SIZE; i++)
-			{
-				if (U[i] - L[i] + 1 == 0)
-				{
-					continue;
-				}
-			}
-		}
-		else
-		{
-		}
-
-		int allow_diff = 1;
-		int allow_indels = 1;
-		int allow_mm = 1;
-		int allow_open = 1;
-		int allow_extend = 1;
-		if ((readLen - e->i) < cdlen)
-		{
-			allow_diff = 0;
-			allow_indels = 0;
-			allow_mm = 0;
-			allow_open = 0;
-			allow_extend = 0;
-		}
-		if (e->i - 1 > 0)
-		{
-			if ((diff_left - 1) < D[e->i - 2].num_diff)
-			{
-				allow_diff = 0;
-			}
-			else if (((D[e->i - 1].num_diff == diff_left - 1) && (D[e->i - 2].num_diff == diff_left - 1)) && (D[e->i - 1].sa_intv_width == D[e->i - 2].sa_intv_width))
-			{
-				allow_mm = 0;
-			}
-		}
-		int tmp = e->num_gapo + e->num_gape;
-		if ((e->i - 1 < (params->no_indel_length + tmp)) || ((readLen - (e->i - 1)) < (params->no_indel_length + tmp)))
-		{
-			allow_indels = 0;
-		}
-		if ((e->num_gapo >= params->max_gapo) && (e->num_gape >= params->max_gape))
-		{
-			allow_indels = 0;
-		}
-		if ((e->num_gapo >= params->max_gapo))
-		{
-			allow_open = 0;
-		}
-		if ((e->num_gape >= params->max_gape))
-		{
-			allow_extend = 0;
-		}
-
-		if (allow_diff && allow_indels)
-		{
-			if (e->state == STATE_I)
-			{
-				if (allow_extend)
-				{
-					heap_push_s(heap, e->i - 1, e->L, e->U, e->num_mm, e->num_gapo, e->num_gape + 1, STATE_I, e->num_snps, e->aln_length, e->aln_path, params);
-				}
-			}
-			else
-			{
-				if (allow_open && (e->state == STATE_M))
-				{
-					heap_push_s(heap, e->i - 1, e->L, e->U, e->num_mm, e->num_gapo + 1, e->num_gape, STATE_I, e->num_snps, e->aln_length, e->aln_path, params);
-				}
-				for (int j = 1; j < alphabet_size; j++)
-				{
-					if (L[j] <= U[j])
-					{
-						if (e->state == STATE_M)
-						{
-							if (allow_open)
-							{
-								heap_push_s(heap, e->i, L[j], U[j], e->num_mm, e->num_gapo + 1, e->num_gape, STATE_D,
-											e->num_snps, e->aln_length, e->aln_path, params);
-							}
-						}
-						else
-						{
-							if (allow_extend)
-							{
-								heap_push_s(heap, e->i, L[j], U[j], e->num_mm, e->num_gapo, e->num_gape + 1, STATE_D,
-											e->num_snps, e->aln_length, e->aln_path, params);
-							}
-						}
-					}
-				}
-			}
-		}
-
-		int c = read[e->i - 1];
-		if (allow_diff && allow_mm)
-		{
-			for (int j = 1; j < alphabet_size; j++)
-			{
-				if (j == 1 || j == 3 || j == 7 || j == 15)
-				{
-					continue;
-				}
-				if (L[j] <= U[j])
-				{
-					int is_mm = 0;
-					if (is_multiref)
-					{
-						if ((c > 3) || (j == 10) /*N*/ || ((nt4_gray_val[c] & grayVal[j]) == 0))
-						{
-							is_mm = 1;
-						}
-					}
-					else
-					{
-						if ((c > 3) || (c != (j - 1)))
-						{
-							is_mm = 1;
-						}
-					}
-					if (!is_mm)
-					{
-						heap_push_s(heap, e->i - 1, L[j], U[j], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-					}
-					else
-					{
-						heap_push_s(heap, e->i - 1, L[j], U[j], e->num_mm + 1, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-					}
-				}
-			}
-			for (int i = 1; i < 5; i++)
-			{
-				int j = pow(2, i) - 1;
-				if (L[j] <= U[j])
-				{
-					int is_mm = 0;
-					if (is_multiref)
-					{
-						if ((c > 3) || (j == 10) /*N*/ || ((nt4_gray_val[c] & grayVal[j]) == 0))
-						{
-							is_mm = 1;
-						}
-					}
-					else
-					{
-						if ((c > 3) || (c != (j - 1)))
-						{
-							is_mm = 1;
-						}
-					}
-					if (!is_mm)
-					{
-						heap_push_s(heap, e->i - 1, L[j], U[j], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-					}
-					else
-					{
-						heap_push_s(heap, e->i - 1, L[j], U[j], e->num_mm + 1, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-					}
-				}
-			}
-		}
-		else if (c < 4)
-		{
-			if (is_multiref)
-			{
-				for (int b = 0; b < BASES_PER_NUCLEOTIDE; b++)
-				{
-					unsigned char base = nucl_bases_table[c][b];
-					if (base == 1 || base == 3 || base == 7 || base == 15)
-					{
-						continue;
-					}
-					if (L[base] <= U[base])
-					{
-						heap_push_s(heap, e->i - 1, L[base], U[base], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									e->num_snps + (is_snp[base]), e->aln_length, e->aln_path, params);
-					}
-				}
-				unsigned char base = nt4_gray[c];
-				if (L[base] <= U[base])
-				{
-					heap_push_s(heap, e->i - 1, L[base], U[base], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-								e->num_snps + (is_snp[base]), e->aln_length, e->aln_path, params);
-				}
-			}
-			else
-			{
-				if (L[c + 1] <= U[c + 1])
-				{
-					heap_push_s(heap, e->i - 1, L[c + 1], U[c + 1], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-								e->num_snps, e->aln_length, e->aln_path, params);
-				}
-			}
-		}
-	}
-	return 0;
+int CigarFormat2( 
+    char* const buffer,
+    cigar_t* const cigar,
+    const bool print_matches,
+	int strimI, int etrimI) {
+  if (cigar_is_null(cigar)) {
+    buffer[0] = '\0';
+    return 0;
+  }
+  const char* const operations = cigar->operations;
+  const int begin_offset = cigar->begin_offset;
+  const int end_offset = cigar->end_offset;
+  char last_op = operations[begin_offset+strimI]; 
+  int last_op_length = 1;
+  int i, cursor = 0;
+  for (i=begin_offset+1+strimI; i<end_offset-etrimI; ++i) {
+    if (operations[i]==last_op) {
+      ++last_op_length;
+    } else {
+      if (print_matches || last_op != 'M') {
+        cursor += sprintf(buffer+cursor,"%d%c",last_op_length,last_op);
+      }
+      last_op = operations[i];
+      last_op_length = 1;
+    }
+  }
+  if (print_matches || last_op != 'M') {
+    cursor += sprintf(buffer+cursor,"%d%c",last_op_length,last_op);
+  }
+  buffer[cursor] = '\0';
+  return cursor;
 }
-
-int inexact_match_fm_mid(struct FMA *fm, char *read, int readLen, priority_heap_t *heap, sa_intv_list_t *precalc_sa_intervals,
-						 const aln_params_t *params, diff_lower_bound_t *D, diff_lower_bound_t *D_seed, alns_t *alns)
-{
-
-	bwtint_t fm_n;
-	Fm_GetN(fm, &fm_n);
-
-	int countN = 0;
-	for (int i = 0; i < readLen; i++)
-	{
-		if (read[i] > 3)
-			countN++;
-	}
-	if (countN > params->max_diff)
-	{
-		return;
-	}
-
-	heap_reset(heap);
-	if (precalc_sa_intervals != NULL)
-	{
-		if (precalc_sa_intervals->size != 0)
-		{
-		}
-		else
-		{
-			return;
-		}
-	}
-	else
-	{
-		heap_push(heap, params->no_e - 1, 0, fm_n, 0, fm_n, 0, 0, 0, 0, 0, 0, 0, params);
-	}
-
-	int best_score = aln_score(params->max_diff + 1, params->max_gapo + 1, params->max_gape + 1, params);
-	int best_diff = params->max_diff + 1;
-	int max_diff = params->max_diff;
-	int num_best = 0;
-	int max_entries = 0;
-
-	int total_entries = 0;
-	int last_num_entries = 1;
-	int tid = 0;
-
-	long nbt0 = nbt;
-	while (heap->num_entries != 0)
-	{
-		total_entries += heap->num_entries - last_num_entries + 1;
-		last_num_entries = heap->num_entries;
-
-		if (heap->num_entries > max_entries)
-			max_entries = heap->num_entries;
-		if (heap->num_entries > params->max_entries)
-		{
-			break;
-		}
-
-		aln_entry_t e_;
-		heap_pop(heap, &e_);
-		aln_entry_t *e = &e_;
-		nbt++;
-		if (e->i == params->no_s)
-		{
-			heap_reset(heap);
-		}
-
-		if (e->score > (best_score + params->mm_score))
-		{
-			break;
-		}
-		int diff_left = max_diff - e->num_mm - e->num_gapo - e->num_gape;
-		if (diff_left < 0)
-		{
-			continue;
-		}
-
-		if (e->i == readLen)
-		{
-			int score = aln_score(e->num_mm, e->num_gapo, e->num_gape, params);
-			if (alns->num_entries == 0)
-			{
-				best_score = score;
-				best_diff = e->num_mm + e->num_gapo + e->num_gape;
-				max_diff = (best_diff + 1 > params->max_diff) ? params->max_diff : best_diff + 1;
-			}
-			if (score == best_score)
-			{
-				num_best += e->U - e->L + 1;
-			}
-			else if (num_best > params->max_best)
-			{
-				break;
-			}
-			add_alignment(e, e->L, e->U - 1, score, alns, params);
-			continue;
-		}
-
-		long L[ALPHABET_SIZE] = {0};
-		long U[ALPHABET_SIZE] = {0};
-		bwtint_t l[ALPHABET_SIZE] = {0};
-		bwtint_t u[ALPHABET_SIZE] = {0};
-		int alphabet_size = ALPHABET_SIZE;
-		int is_multiref = params->is_multiref;
-		if (params->is_multiref)
-		{
-			if (e->i == params->no_e)
-			{
-				Occ16p(e->l, e->u, l, u, fm);
-				for (int j = 0; j < ALPHABET_SIZE; j++)
-				{
-					L[j] = (j == 0) ? (e->L) : (U[j - 1]);
-					U[j] = L[j] + u[iupacCompl[j]] - l[iupacCompl[j]] + 1;
-				}
-			}
-			else if (e->i < params->no_e)
-			{
-				Occ16p(e->L - 1, e->U, L, U, fm);
-				for (int j = 0; j < ALPHABET_SIZE; j++)
-				{
-					l[j] = (j == 0) ? (e->l) : (u[j - 1]);
-					u[j] = l[j] + U[iupacCompl[j]] - L[iupacCompl[j]] + 1;
-				}
-			}
-			else
-			{
-				Occ16p(e->l - 1, e->u, l, u, fm);
-				for (int j = 0; j < ALPHABET_SIZE; j++)
-				{
-					L[j] = (j == 0) ? (e->L) : (U[j - 1]);
-					U[j] = L[j] + u[iupacCompl[j]] - l[iupacCompl[j]] + 1;
-				}
-			}
-		}
-		else
-		{
-		}
-
-		int allow_diff = 1;
-		int allow_indels = 1;
-		int allow_mm = 1;
-		int allow_open = 1;
-		int allow_extend = 1;
-		if ((e->i > params->no_s) && (e->i < params->no_e))
-		{
-			allow_diff = 0;
-			allow_indels = 0;
-			allow_mm = 0;
-			allow_open = 0;
-			allow_extend = 0;
-		}
-		if (diff_left == 0)
-		{
-			allow_diff = 0;
-		}
-
-		int tmp = e->num_gapo + e->num_gape;
-		if ((e->i - 1 < (params->no_indel_length + tmp)) || ((readLen - (e->i - 1)) < (params->no_indel_length + tmp)))
-		{
-			allow_indels = 0;
-		}
-		if ((e->num_gapo >= params->max_gapo) && (e->num_gape >= params->max_gape))
-		{
-			allow_indels = 0;
-		}
-		if ((e->num_gapo >= params->max_gapo))
-		{
-			allow_open = 0;
-		}
-		if ((e->num_gape >= params->max_gape))
-		{
-			allow_extend = 0;
-		}
-
-		if (allow_diff && allow_indels)
-		{
-			if (e->state == STATE_I)
-			{
-				if (allow_extend)
-				{
-					if (e->i == 0)
-					{
-						heap_push(heap, params->no_e, e->L, e->U, e->l, e->u, e->num_mm, e->num_gapo, e->num_gape + 1, STATE_I, e->num_snps, e->aln_length, e->aln_path, params);
-					}
-					else if (e->i < params->no_e)
-					{
-						heap_push(heap, e->i - 1, e->L, e->U, e->l, e->u, e->num_mm, e->num_gapo, e->num_gape + 1, STATE_I, e->num_snps, e->aln_length, e->aln_path, params);
-					}
-					else
-					{
-						heap_push(heap, e->i + 1, e->L, e->U, e->l, e->u, e->num_mm, e->num_gapo, e->num_gape + 1, STATE_I, e->num_snps, e->aln_length, e->aln_path, params);
-					}
-				}
-			}
-			else
-			{
-				if (allow_open && (e->state == STATE_M))
-				{
-					if (e->i == 0)
-					{
-						heap_push(heap, params->no_e, e->L, e->U, e->l, e->u, e->num_mm, e->num_gapo + 1, e->num_gape, STATE_I, e->num_snps, e->aln_length, e->aln_path, params);
-					}
-					else if (e->i < params->no_e)
-					{
-						heap_push(heap, e->i - 1, e->L, e->U, e->l, e->u, e->num_mm, e->num_gapo + 1, e->num_gape, STATE_I, e->num_snps, e->aln_length, e->aln_path, params);
-					}
-					else
-					{
-						heap_push(heap, e->i + 1, e->L, e->U, e->l, e->u, e->num_mm, e->num_gapo + 1, e->num_gape, STATE_I, e->num_snps, e->aln_length, e->aln_path, params);
-					}
-				}
-				for (int j = 1; j < alphabet_size; j++)
-				{
-					if (((e->i > 0) && (e->i < params->no_e)) ? (L[j] <= U[j]) : (l[iupacCompl[j]] <= u[iupacCompl[j]]))
-					{
-						if (e->state == STATE_M)
-						{
-							if (allow_open)
-							{
-								heap_push(heap, e->i, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm, e->num_gapo + 1, e->num_gape, STATE_D,
-										  e->num_snps, e->aln_length, e->aln_path, params);
-							}
-						}
-						else
-						{
-							if (allow_extend)
-							{
-								heap_push(heap, e->i, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm, e->num_gapo, e->num_gape + 1, STATE_D,
-										  e->num_snps, e->aln_length, e->aln_path, params);
-							}
-						}
-					}
-				}
-			}
-		}
-
-		int c = (e->i == 0) ? read[0] : read[e->i];
-		if (allow_diff && allow_mm)
-		{
-			for (int j = 1; j < alphabet_size; j++)
-			{
-				if (j == 1 || j == 3 || j == 7 || j == 15)
-				{
-					continue;
-				}
-				if (((e->i > 0) && (e->i < params->no_e)) ? (L[j] <= U[j]) : (l[iupacCompl[j]] <= u[iupacCompl[j]]))
-				{
-					int is_mm = 0;
-					if (is_multiref)
-					{
-						if ((c > 3) || (j == 10) /*N*/ || ((nt4_gray_val[c] & grayVal[j]) == 0))
-						{
-							is_mm = 1;
-						}
-					}
-					else
-					{
-						if ((c > 3) || (c != (j - 1)))
-						{
-							is_mm = 1;
-						}
-					}
-					if (!is_mm)
-					{
-						if (e->i == 0)
-						{
-							heap_push(heap, params->no_e, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-						}
-						else if (e->i < params->no_e)
-						{
-							heap_push(heap, e->i - 1, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-						}
-						else
-						{
-							heap_push(heap, e->i + 1, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-						}
-					}
-					else
-					{
-						if (e->i == 0)
-						{
-							heap_push(heap, params->no_e, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm + 1, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-						}
-						else if (e->i < params->no_e)
-						{
-							heap_push(heap, e->i - 1, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm + 1, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-						}
-						else
-						{
-							heap_push(heap, e->i + 1, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm + 1, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-						}
-					}
-				}
-			}
-
-			for (int i = 1; i < 5; i++)
-			{
-				int j = pow(2, i) - 1;
-				if (((e->i > 0) && (e->i < params->no_e)) ? (L[j] <= U[j]) : (l[iupacCompl[j]] <= u[iupacCompl[j]]))
-				{
-					int is_mm = 0;
-					if (is_multiref)
-					{
-						if ((c > 3) || (j == 10) /*N*/ || ((nt4_gray_val[c] & grayVal[j]) == 0))
-						{
-							is_mm = 1;
-						}
-					}
-					else
-					{
-						if ((c > 3) || (c != (j - 1)))
-						{
-							is_mm = 1;
-						}
-					}
-					if (!is_mm)
-					{
-						if (e->i == 0)
-						{
-							heap_push(heap, params->no_e, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-						}
-						else if (e->i < params->no_e)
-						{
-							heap_push(heap, e->i - 1, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-						}
-						else
-						{
-							heap_push(heap, e->i + 1, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-						}
-					}
-					else
-					{
-						if (e->i == 0)
-						{
-							heap_push(heap, params->no_e, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm + 1, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-						}
-						else if (e->i < params->no_e)
-						{
-							heap_push(heap, e->i - 1, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm + 1, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-						}
-						else
-						{
-							heap_push(heap, e->i + 1, L[j], U[j], l[iupacCompl[j]], u[iupacCompl[j]], e->num_mm + 1, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_multiref && is_snp[j]), e->aln_length, e->aln_path, params);
-						}
-					}
-				}
-			}
-		}
-		else if (c < 4)
-		{
-			if (is_multiref)
-			{
-				for (int b = 0; b < BASES_PER_NUCLEOTIDE; b++)
-				{
-					unsigned char base = nucl_bases_table[c][b];
-					if (base == 1 || base == 3 || base == 7 || base == 15)
-					{
-						continue;
-					}
-					if (((e->i > 0) && (e->i < params->no_e)) ? (L[base] <= U[base]) : (l[iupacCompl[base]] <= u[iupacCompl[base]]))
-					{
-						if (e->i == 0)
-						{
-							heap_push(heap, params->no_e, L[base], U[base], l[iupacCompl[base]], u[iupacCompl[base]], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_snp[base]), e->aln_length, e->aln_path, params);
-						}
-						else if (e->i < params->no_e)
-						{
-							heap_push(heap, e->i - 1, L[base], U[base], l[iupacCompl[base]], u[iupacCompl[base]], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_snp[base]), e->aln_length, e->aln_path, params);
-						}
-						else
-						{
-							heap_push(heap, e->i + 1, L[base], U[base], l[iupacCompl[base]], u[iupacCompl[base]], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-									  e->num_snps + (is_snp[base]), e->aln_length, e->aln_path, params);
-						}
-					}
-				}
-				unsigned char base = nt4_gray[c];
-				if (((e->i > 0) && (e->i < params->no_e)) ? (L[base] <= U[base]) : (l[iupacCompl[base]] <= u[iupacCompl[base]]))
-				{
-					if (e->i == 0)
-					{
-						heap_push(heap, params->no_e, L[base], U[base], l[iupacCompl[base]], u[iupacCompl[base]], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-								  e->num_snps + (is_snp[base]), e->aln_length, e->aln_path, params);
-					}
-					else if (e->i < params->no_e)
-					{
-						heap_push(heap, e->i - 1, L[base], U[base], l[iupacCompl[base]], u[iupacCompl[base]], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-								  e->num_snps + (is_snp[base]), e->aln_length, e->aln_path, params);
-					}
-					else
-					{
-						heap_push(heap, e->i + 1, L[base], U[base], l[iupacCompl[base]], u[iupacCompl[base]], e->num_mm, e->num_gapo, e->num_gape, STATE_M,
-								  e->num_snps + (is_snp[base]), e->aln_length, e->aln_path, params);
-					}
-				}
-			}
-			else
-			{
-			}
-		}
-	}
-	return 0;
-}
-
-priority_heap_t *heap_init(const aln_params_t *p)
-{
-	priority_heap_t *heap = (priority_heap_t *)calloc(1, sizeof(priority_heap_t));
-	heap->num_buckets = aln_score(p->max_diff + 1, p->max_gapo + 1, p->max_gape + 1, p);
-	heap->buckets = (heap_bucket_t *)calloc(heap->num_buckets, sizeof(heap_bucket_t));
-	if (heap == NULL || heap->buckets == NULL)
-	{
-		printf("Could not allocate memory for the heap \n");
+void JoinedToTextOff(uint32_t* tidx, uint32_t* toff, uint32_t* off, uint32_t* qlen){
+	char var[]="/home/lab/gll/hisat2-2.2.1/grch38_snp/genome_snp.1.ht2";
+	FILE* varFile = (FILE*) fopen(var, "r");
+	if(varFile == NULL){
+		printf("BitPairReference: Cannot open var file: %s \n", var);
 		exit(1);
 	}
-	for (int i = 0; i < heap->num_buckets; i++)
-	{
-		heap_bucket_t *hb = &(heap->buckets[i]);
-		hb->max_entries = 4;
-		hb->entries = (aln_entry_t *)calloc(hb->max_entries, sizeof(aln_entry_t));
-		if (hb->entries == NULL)
-		{
-			printf("Could not allocate memory for the heap \n");
-			exit(1);
+	uint64_t bytesRead =0; 
+	uint32_t one, idxVer, len, gbwtLen, numNodes, lineRate, linesPerSide, offRate, ftabChars, eftabLen, flags, _nPat, _nFrag;
+	fread(&one, 4, 1, varFile); bytesRead +=4;
+	fread(&idxVer, 4, 1, varFile); bytesRead +=4; 
+	fread(&len, 4, 1, varFile); bytesRead +=4;
+	fread(&gbwtLen, 4, 1, varFile); bytesRead +=4;
+	fread(&numNodes, 4, 1, varFile); bytesRead +=4;
+	fread(&lineRate, 4, 1, varFile); bytesRead +=4;
+	fread(&linesPerSide, 4, 1, varFile); bytesRead +=4;
+	fread(&offRate, 4, 1, varFile); bytesRead +=4;
+	fread(&ftabChars, 4, 1, varFile); bytesRead +=4;
+	fread(&eftabLen, 4, 1, varFile); bytesRead +=4;
+	fread(&flags, 4, 1, varFile); bytesRead +=4;
+	fread(&_nPat, 4, 1, varFile); bytesRead +=4;
+	jj("one:%u idxVer:%u len:%u gbwtLen:%u numNodes:%u lineRate:%u linesPerSide:%u offRate:%u ftabChars:%u eftabLen:%u flags:%u _nPat:%u \n", 
+		one, idxVer, len, gbwtLen, numNodes, lineRate, linesPerSide, offRate, ftabChars, eftabLen, flags, _nPat);
+	uint32_t* plen = (uint32_t*) calloc(_nPat, sizeof(uint32_t));
+	for(uint32_t i=0; i<_nPat; i++){
+		fread(&(plen[i]), 4, 1, varFile); bytesRead +=4;
+	}
+	fread(&_nFrag, 4, 1, varFile); bytesRead +=4;
+	jj("_nFrag:%u \n", _nFrag); 
+	uint32_t* rstarts = (uint32_t*) calloc(_nFrag*3, sizeof(uint32_t));
+	for(uint32_t i=0; i<_nFrag*3; i+=3){ 
+		fread(&(rstarts[i]), 4, 1, varFile); bytesRead +=4; 
+		fread(&(rstarts[i+1]), 4, 1, varFile); bytesRead +=4; 
+		fread(&(rstarts[i+2]), 4, 1, varFile); bytesRead +=4; 
+	}
+	uint32_t _gbwtLen =(gbwtLen == 0 ? len + 1 : gbwtLen);
+	uint32_t _gbwtSz =_gbwtLen/2 + 1;                      
+	uint32_t _sideSz =(1<<lineRate);
+	uint32_t _sideGbwtSz =_sideSz - (4 * 6); 
+	uint32_t _numSides =(_gbwtSz+(_sideGbwtSz)-1)/(_sideGbwtSz);
+	uint32_t _gbwtTotLen =_numSides * _sideSz;     fseek(varFile, _gbwtTotLen, SEEK_CUR);    
+	uint32_t numZOffs;                             fread(&numZOffs, 4, 1, varFile);
+	fseek(varFile, numZOffs*4, SEEK_CUR); 
+	fseek(varFile, 5*4, SEEK_CUR);        
+	uint32_t _ftabLen =(1<<(ftabChars*2))+1;       fseek(varFile, _ftabLen*4, SEEK_CUR);     
+	uint32_t _eftabLen =eftabLen;                  fseek(varFile, _eftabLen*4, SEEK_CUR);    
+	char chrName[256];
+	int i=0, nChr=0;          
+	while(1){
+		char c ='\0';
+		c= getc(varFile);
+		if(c==EOF) break;
+		if(c=='\0'){          
+			break;
+		}else if(c=='\n'){    
+			chrName[i] ='\0'; 
+			i =0;
+			nChr++;
+		}else{                
+			chrName[i] =c;
+			i++;
 		}
 	}
-	heap->best_score = heap->num_buckets;
-	return heap;
-}
-
-void heap_free(priority_heap_t *heap)
-{
-	for (int i = 0; i < heap->num_buckets; i++)
-	{
-		free(heap->buckets[i].entries);
-	}
-	free(heap->buckets);
-	free(heap);
-}
-
-void heap_reset(priority_heap_t *heap)
-{
-	for (int i = 0; i < heap->num_buckets; i++)
-	{
-		heap->buckets[i].num_entries = 0;
-	}
-	heap->best_score = heap->num_buckets;
-	heap->num_entries = 0;
-}
-
-void heap_push_s(priority_heap_t *heap, const int i, const bwtint_t L, const bwtint_t U, /*const bwtint_t l, const bwtint_t u, gll*/
-				 const int num_mm, const int num_gapo, const int num_gape,
-				 const int state, const int num_snps, const int aln_length, const char *aln_path,
-				 const aln_params_t *params)
-{
-
-	int score = aln_score(num_mm, num_gapo, num_gape, params);
-	heap_bucket_t *hb = &(heap->buckets[score]);
-	if (hb->num_entries == hb->max_entries)
-	{
-		hb->max_entries <<= 1;
-		hb->entries = (aln_entry_t *)realloc(hb->entries, sizeof(aln_entry_t) * hb->max_entries);
-		if (hb->entries == NULL)
-		{
-			printf("Could not reallocate memory for the heap bucket! \n");
-			exit(1);
+	uint32_t top =0; 
+	uint32_t bot =_nFrag; 
+	uint32_t elt =0xffffffff;
+	while(1){
+		elt =top+((bot-top)>>1); 
+		uint32_t lower =rstarts[elt*3]; 
+		uint32_t upper; 
+		if(elt==_nFrag-1){
+			upper =len; 
+		}else{
+			upper =rstarts[(elt+1)*3]; 
 		}
-	}
-	aln_entry_t *p = &(hb->entries[hb->num_entries]);
-	p->i = i;
-	p->score = score;
-	p->L = L;
-	p->U = U;
-	// p->l = l;
-	// p->u = u;
-	p->num_mm = num_mm;
-	p->num_gapo = num_gapo;
-	p->num_gape = num_gape;
-	p->state = state;
-	p->num_snps = num_snps;
-	p->aln_length = 0;
-	if (aln_path != NULL)
-	{
-		memset(&(p->aln_path), 0, ALN_PATH_ALLOC * sizeof(char));
-		memcpy(&(p->aln_path), aln_path, aln_length * sizeof(char));
-		p->aln_path[aln_length] = state;
-		p->aln_length = aln_length + 1;
-	}
-
-	hb->num_entries++;
-	heap->num_entries++;
-
-	if (heap->best_score > score)
-	{
-		heap->best_score = score;
-	}
-}
-
-void heap_push(priority_heap_t *heap, const int i, const bwtint_t L, const bwtint_t U, const bwtint_t l, const bwtint_t u,
-			   const int num_mm, const int num_gapo, const int num_gape,
-			   const int state, const int num_snps, const int aln_length, const char *aln_path,
-			   const aln_params_t *params)
-{
-
-	int score = aln_score(num_mm, num_gapo, num_gape, params);
-	heap_bucket_t *hb = &(heap->buckets[score]);
-	if (hb->num_entries == hb->max_entries)
-	{
-		hb->max_entries <<= 1;
-		hb->entries = (aln_entry_t *)realloc(hb->entries, sizeof(aln_entry_t) * hb->max_entries);
-		if (hb->entries == NULL)
-		{
-			printf("Could not reallocate memory for the heap bucket! \n");
-			exit(1);
-		}
-	}
-	aln_entry_t *p = &(hb->entries[hb->num_entries]);
-	p->i = i;
-	p->score = score;
-	p->L = L;
-	p->U = U;
-	p->l = l;
-	p->u = u;
-	p->num_mm = num_mm;
-	p->num_gapo = num_gapo;
-	p->num_gape = num_gape;
-	p->state = state;
-	p->num_snps = num_snps;
-	p->aln_length = 0;
-	if (aln_path != NULL)
-	{
-		memset(&(p->aln_path), 0, ALN_PATH_ALLOC * sizeof(char));
-		memcpy(&(p->aln_path), aln_path, aln_length * sizeof(char));
-		p->aln_path[aln_length] = state;
-		p->aln_length = aln_length + 1;
-	}
-
-	hb->num_entries++;
-	heap->num_entries++;
-
-	if (heap->best_score > score)
-	{
-		heap->best_score = score;
-	}
-}
-
-void heap_pop(priority_heap_t *heap, aln_entry_t *e)
-{
-	heap_bucket_t *hb = &(heap->buckets[heap->best_score]);
-	aln_entry_t *et = &(hb->entries[hb->num_entries - 1]);
-	hb->num_entries--;
-	heap->num_entries--;
-
-	if ((hb->num_entries == 0) && heap->num_entries)
-	{
-		int i;
-		for (i = heap->best_score + 1; i < heap->num_buckets; i++)
-		{
-			if (heap->buckets[i].num_entries != 0)
+		uint32_t fraglen =upper-lower; 
+		if(lower <= (*off)){
+			if(upper > (*off)){
+				if((*off)+(*qlen) >upper){ 
+					printf("exit: Straddled! \n");
+					return;
+				}
+				(*tidx) =rstarts[(elt*3)+1]; 
+				uint32_t fragoff =(*off)-rstarts[elt*3]; 
+				if(1){
+					fragoff =fraglen-fragoff-1;
+					fragoff -=((*qlen)-1);
+				}
+				(*toff) =fragoff+rstarts[(elt*3)+2]; 
 				break;
+			}else{
+				top =elt; 
+			}
+		}else{
+			bot =elt; 
 		}
-		heap->best_score = i;
 	}
-	else if (heap->num_entries == 0)
-	{
-		heap->best_score = heap->num_buckets;
-	}
-	memcpy(e, et, sizeof(aln_entry_t));
 }
