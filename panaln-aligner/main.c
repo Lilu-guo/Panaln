@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 static int usage() {
-	printf("Usage:   bwbble command [options] \n");
+	printf("Usage:   panaln command [options] \n");
 	printf("Command: index    index sequences in the FASTA format\n");
 	printf("         align    exact or inexact read alignment\n");
 	printf("         fasta2ref    constructs a single linear reference from the input file \n");
@@ -16,13 +16,13 @@ static int usage() {
 	return 1;
 }
 static int index_usage() {
-	printf("Usage: bwbble index [options] <seq_fasta> \n");
+	printf("Usage: panaln index [options] <seq_fasta> \n");
 	printf("Options: e    file with the SA precomputed by the external memory eSAIS algorithm.\n");
 	printf("\n");
 	return 1;
 }
 static int align_usage() {
-	printf("Usage: bwbble align [options] <seq_fasta> <reads_fastq> <output_aln> \n");
+	printf("Usage: panaln align [options] <seq_fasta> <reads_fastq> <output_aln> \n");
 	printf("Options: M    mismatch penalty (default: 3)\n");
 	printf("         O    gap open penalty (default: 11) \n");
 	printf("         E    gap extend penalty (default: 4) \n");
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
 		free(params);
 	} else if (strcmp(argv[1], "fasta2ref") == 0) {                          
                 if(argc < 3) {
-                        printf("Usage: bwbble fasta2ref <seq_fasta> \n");
+                        printf("Usage: panaln fasta2ref <seq_fasta> \n");
                         exit(1);
                 }
 		char* refFname  = (char*) malloc(strlen(argv[optind+1]) + 5);
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
 		free(seq);
 	} else if (strcmp(argv[1], "aln2sam") == 0) {                            
 		if(argc < 6) {
-			printf("Usage: bwbble aln2sam [-S, -n] <seq_fasta> <reads_fastq> <alns_aln> <out_sam> \n");
+			printf("Usage: panaln aln2sam [-S, -n] <seq_fasta> <reads_fastq> <alns_aln> <out_sam> \n");
 			exit(1);
 		}
 		int is_multiref = 1;
