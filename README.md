@@ -21,7 +21,7 @@ https://github.com/ksahlin/strobealign/blob/main/evaluation.md
 
 # Step I. Install
   1. Download (or clone) the source code form https://github.com/Lilu-guo/Panaln
-  2. Compile the source code. (Note that you need to compile FM first)
+  2. Compile the source code. (Note that you need to compile FM and WFA first)
 
 # Step II. Data preprocessing
   1. Convert vcf format to custom snp format with five columns by running: "./vcf2snp snp144common.txt snp144common.snp". (If your reference genome is an entire sequence, you can split it into independent chromosomes by running: "genom2chr" .)
