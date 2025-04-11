@@ -55,6 +55,7 @@ Feedback Email: <guolilu@stu.xidian.edu.cn>
  ```
   
 # Available data:
+ ```
  Illumina reads dataset:   
  https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_indexes/AshkenazimTrio/sequence.index.AJtrio_Illumina_2x250bps_06012016_updated.HG004   
  PacBio-CCS reads dataset:   
@@ -65,6 +66,7 @@ Feedback Email: <guolilu@stu.xidian.edu.cn>
  https://github.com/DaehwanKimLab/hisat2/blob/master/hisat2_simulate_reads.py    
  Pipeline of variant calling:   
  https://github.com/ksahlin/strobealign/blob/main/evaluation.md   
+ ```
    
 # Feedback
  Please report bugs to Email: guolilu@stu.xidian.edu.cn if any questions or suggestions. 
