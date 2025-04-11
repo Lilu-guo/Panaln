@@ -1,5 +1,5 @@
 # Panaln
- version 2.0（20250410）
+ Version 2.0（20250410）
 
 # What is it?
  Panaln: Indexing pangenome for read alignment.
@@ -54,6 +54,31 @@ Feedback Email: <guolilu@stu.xidian.edu.cn>
  Feedback Email: <guolilu@stu.xidian.edu.cn>
  ```
   
+# Quick start
+  1. Compile source code
+  ```
+  git clone https://github.com/Lilu-guo/panaln.git
+  cd panaln/FM/  
+  make
+  cd ../semiWFA/
+  make
+  cd ../
+  make
+  ```
+  2. Generate pangenome
+  ```
+  ./panaln combine -s /home/dell198/gll/panaln/Test/1.fa -v /home/dell198/gll/panaln/Test/1.fa.vcf -b chr1
+  ```
+  3. Construct index
+  ```
+  ./panaln index -p /home/dell198/gll/panaln/dirPan/chr1.pan
+  ```
+
+  4. Read alignment
+  ```
+  ./panaln align -x /home/dell198/gll/panaln/dirPan/chr1 -f /home/dell198/gll/panaln/Test/1.fastq -s /home/dell198/gll/panaln/Test/1.sam
+  ```
+
 # Available data:
  ```
  Illumina reads dataset:   

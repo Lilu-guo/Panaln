@@ -1217,16 +1217,16 @@ fm_int ABS_FM::Occ(fm_int & occ , unsigned char & label,fm_int pos)
 }
 unsigned char * ABS_FM::Getfile(const char *filename)
 {
-	this->filename = (char*) malloc(strlen(filename)); 
+	this->filename = (char*) malloc(strlen(filename)+1); 
 	strcpy(this->filename,filename);
-	FILE * fp = fopen(filename,"r+");
+	FILE * fp = fopen(this->filename,"r+");
 	if(fp==NULL)
 	{
-		cout<<"Be sure the file is available "<<filename<<endl;
+		cout<<"Be sure the file is available "<<this->filename<<endl;
 		exit(0);
 	}
 	fseek(fp,0,SEEK_END);
-	this->n = ftell(fp);                          
+	this->n = ftell(fp);                    
 	unsigned char * T = new unsigned char[n];     
 	fseek(fp,0,SEEK_SET);
 	fm_int e=0;
