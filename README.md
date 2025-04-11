@@ -1,50 +1,50 @@
 # Panaln
-version 2.0（20250410）
+ version 2.0（20250410）
 
 # What is it?
-Panaln: Indexing pangenome for read alignment.
+ Panaln: Indexing pangenome for read alignment.
 
 # How to use it?
-Usage:   panaln [combine /index /align] <options>
-\--------------
-Function: combine  generate pangenome file
-	        index    construct a pangenome index
-	        align    perform read alignment
-\--------------
-Feedback Email: <guolilu@stu.xidian.edu.cn>
+ Usage:   panaln [combine /index /align] <options>  
+ \--------------  
+ Function: combine  generate pangenome file  
+	         index    construct a pangenome index  
+ 	         align    perform read alignment  
+ \--------------  
+ Feedback Email: <guolilu@stu.xidian.edu.cn>  
 
 # Step I. Install
-  1. Download (or clone) the source code form https://github.com/Lilu-guo/Panaln
-  2. Compile the source code. (Note that you need to compile FM and WFA first)
+  1. Download (or clone) the source code form https://github.com/Lilu-guo/Panaln  
+  2. Compile the source code. (Note that you need to compile FM and WFA first)  
 
 # Step II. Generate pangenome
-Usage: panaln combine -s <input.fasta> -v <input.vcf> -b <basename>
-\--------------
-Specific:  -s STRING [required] reference genome
-           -v STRING [required] vcf file
-           -b STRING [required] basename
-           -c STRING [optional] context size (default:150)
-Please use ABSOLUTE PATHs when specifying files.
-\--------------
-Feedback Email: <guolilu@stu.xidian.edu.cn>
+ Usage: panaln combine -s <input.fasta> -v <input.vcf> -b <basename>  
+ \--------------  
+ Specific:  -s STRING [required] reference genome  
+            -v STRING [required] vcf file  
+            -b STRING [required] basename  
+            -c STRING [optional] context size (default:150)  
+ Please use ABSOLUTE PATHs when specifying files.  
+ \--------------  
+Feedback Email: <guolilu@stu.xidian.edu.cn>  
      
 # Step III. Construct index
-Usage: panaln index -p <input.pan>
-\--------------
-Specific:  -p STRING [required] pangenome file
-Please use ABSOLUTE PATHs when specifying files.
-\--------------
-Feedback Email: <guolilu@stu.xidian.edu.cn>
+ Usage: panaln index -p <input.pan>  
+ \--------------  
+ Specific:  -p STRING [required] pangenome file  
+ Please use ABSOLUTE PATHs when specifying files.  
+ \--------------  
+ Feedback Email: <guolilu@stu.xidian.edu.cn>  
   
 # Step IV. Read alignment
-Usage: panaln align -x <index_basename> -f <input.fastq> -s <output.sam>
-\--------------
-Specific:  -x STRING [required] basename
-           -f STRING [required] fastq file
-           -s STRING [required] smm file
-Please use ABSOLUTE PATHs when specifying files.
-\--------------
-Feedback Email: <guolilu@stu.xidian.edu.cn>
+ Usage: panaln align -x <index_basename> -f <input.fastq> -s <output.sam>  
+ \--------------  
+ Specific:  -x STRING [required] basename  
+            -f STRING [required] fastq file  
+            -s STRING [required] smm file  
+ Please use ABSOLUTE PATHs when specifying files.  
+ \--------------
+ Feedback Email: <guolilu@stu.xidian.edu.cn>
   
 # Available data:
 Illumina reads dataset:   
