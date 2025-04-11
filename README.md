@@ -9,7 +9,7 @@
  Usage:   panaln [combine /index /align] <options>  
  \--------------  
  Function: combine  generate pangenome file  
-	         index    construct a pangenome index  
+           index    construct a pangenome index  
  	         align    perform read alignment  
  \--------------  
  Feedback Email: <guolilu@stu.xidian.edu.cn> 
@@ -20,6 +20,7 @@
   2. Compile the source code. (Note that you need to compile FM and WFA first)  
 
 # Step II. Generate pangenome
+```
  Usage: panaln combine -s <input.fasta> -v <input.vcf> -b <basename>  
  \--------------  
  Specific:  -s STRING [required] reference genome  
@@ -29,16 +30,20 @@
  Please use ABSOLUTE PATHs when specifying files.  
  \--------------  
 Feedback Email: <guolilu@stu.xidian.edu.cn>  
+```
      
 # Step III. Construct index
+```
  Usage: panaln index -p <input.pan>  
  \--------------  
  Specific:  -p STRING [required] pangenome file  
  Please use ABSOLUTE PATHs when specifying files.  
  \--------------  
  Feedback Email: <guolilu@stu.xidian.edu.cn>  
+ ```
   
 # Step IV. Read alignment
+```
  Usage: panaln align -x <index_basename> -f <input.fastq> -s <output.sam>  
  \--------------  
  Specific:  -x STRING [required] basename  
@@ -47,6 +52,7 @@ Feedback Email: <guolilu@stu.xidian.edu.cn>
  Please use ABSOLUTE PATHs when specifying files.  
  \--------------
  Feedback Email: <guolilu@stu.xidian.edu.cn>
+ ```
   
 # Available data:
  Illumina reads dataset:   
