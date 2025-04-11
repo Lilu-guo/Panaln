@@ -1,0 +1,84 @@
+/home/lab/lab/hzt/testfile/dna
+D:	32
+IndexRadio:	52.9282 %
+SA:			18.4507 %
+newD:		8.07219 %
+ISA:			18.4507 %
+TotalRadio:	44.9736 %
+/home/lab/lab/hzt/testfile/dna
+D:	64
+IndexRadio:	41.011 %
+SA:			11.4299 %
+newD:		6.1242 %
+ISA:			11.4299 %
+TotalRadio:	28.9839 %
+/home/lab/lab/hzt/testfile/dna
+D:	128
+IndexRadio:	35.2463 %
+SA:			6.37257 %
+newD:		4.62358 %
+ISA:			6.37258 %
+TotalRadio:	17.3687 %
+/home/lab/lab/hzt/testfile/dna
+D:	256
+IndexRadio:	32.46 %
+SA:			3.30936 %
+newD:		3.65722 %
+ISA:			3.30936 %
+TotalRadio:	10.2759 %
+/home/lab/lab/hzt/GRCh38.fna
+D:	32
+IndexRadio:	56.9704 %
+SA:			19.1986 %
+newD:		7.51551 %
+ISA:			19.1986 %
+TotalRadio:	45.9126 %
+/home/lab/lab/hzt/GRCh38.fna
+D:	64
+IndexRadio:	43.8814 %
+SA:			12.0175 %
+newD:		5.74446 %
+ISA:			12.0175 %
+TotalRadio:	29.7794 %
+/home/lab/lab/hzt/GRCh38.fna
+D:	128
+IndexRadio:	37.5307 %
+SA:			6.76529 %
+newD:		4.36654 %
+ISA:			6.76529 %
+TotalRadio:	17.8971 %
+/home/lab/lab/hzt/GRCh38.fna
+D:	256
+IndexRadio:	34.4515 %
+SA:			3.54325 %
+newD:		3.47239 %
+ISA:			3.54325 %
+TotalRadio:	10.5589 %
+/home/lab/lab/hzt/NA12877_10G_Reads
+D:	32
+IndexRadio:	56.767 %
+SA:			20.6436 %
+newD:		7.55318 %
+ISA:			20.6436 %
+TotalRadio:	48.8403 %
+/home/lab/lab/hzt/NA12877_10G_Reads
+D:	64
+IndexRadio:	42.8968 %
+SA:			13.2039 %
+newD:		5.89054 %
+ISA:			13.2039 %
+TotalRadio:	32.2984 %
+/home/lab/lab/hzt/NA12877_10G_Reads
+D:	128
+IndexRadio:	36.1555 %
+SA:			7.56282 %
+newD:		4.54951 %
+ISA:			7.56282 %
+TotalRadio:	19.6752 %
+/home/lab/lab/hzt/NA12877_10G_Reads
+D:	256
+IndexRadio:	32.8809 %
+SA:			4.00949 %
+newD:		3.65681 %
+ISA:			4.00949 %
+TotalRadio:	11.6758 %

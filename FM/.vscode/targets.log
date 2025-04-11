@@ -1,0 +1,414 @@
+make all --print-data-base --no-builtin-variables --no-builtin-rules --question
+# GNU Make 4.1
+# Built for x86_64-pc-linux-gnu
+# Copyright (C) 1988-2014 Free Software Foundation, Inc.
+# License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+# This is free software: you are free to change and redistribute it.
+# There is NO WARRANTY, to the extent permitted by law.
+
+# Make data base, printed on Fri Sep  3 11:26:01 2021
+
+# Variables
+
+# automatic
+<D = $(patsubst %/,%,$(dir $<))
+# automatic
+?F = $(notdir $?)
+# default
+.SHELLFLAGS := -c
+# environment
+VSCODE_AGENT_FOLDER = /home/lab/.vscode-server
+# environment
+VSCODE_LOG_NATIVE = false
+# automatic
+?D = $(patsubst %/,%,$(dir $?))
+# automatic
+@D = $(patsubst %/,%,$(dir $@))
+# automatic
+@F = $(notdir $@)
+# default
+MAKE_VERSION := 4.1
+# makefile
+CURDIR := /home/lab/lab/hzt/gap-FM
+# makefile
+SHELL = /bin/sh
+# environment
+JRE_HOME = /opt/jvm/jdk1.8.0_171/jre
+# environment
+VSCODE_NLS_CONFIG = {"locale":"zh-cn","availableLanguages":{"*":"zh-cn"},"_languagePackId":"7d4475705dbefc0b030fb3212a8b6c52.zh-cn","_translationsConfigFile":"/home/lab/.vscode-server/data/clp/7d4475705dbefc0b030fb3212a8b6c52.zh-cn/tcf.json","_cacheRoot":"/home/lab/.vscode-server/data/clp/7d4475705dbefc0b030fb3212a8b6c52.zh-cn","_resolvedLanguagePackCoreLocation":"/home/lab/.vscode-server/data/clp/7d4475705dbefc0b030fb3212a8b6c52.zh-cn/3866c3553be8b268c8a7f8c0482c0c0177aa8bfa","_corruptedFile":"/home/lab/.vscode-server/data/clp/7d4475705dbefc0b030fb3212a8b6c52.zh-cn/corrupted.info","_languagePackSupport":true}
+# environment
+_ = /home/lab/.vscode-server/bin/3866c3553be8b268c8a7f8c0482c0c0177aa8bfa/node
+# makefile (from 'makefile', line 2)
+CFLAGS = -O3 -no-pie -Wall
+# makefile (from 'makefile', line 1)
+MAKEFILE_LIST :=  makefile
+# 'override' directive
+GNUMAKEFLAGS := 
+# environment
+XDG_DATA_DIRS = /usr/local/share:/usr/share:/var/lib/snapd/desktop
+# environment
+VSCODE_VERBOSE_LOGGING = true
+# environment
+LESSOPEN = | /usr/bin/lesspipe %s
+# environment
+VSCODE_CWD = /home/lab
+# environment
+SSH_CONNECTION = 10.170.1.217 61654 10.170.68.77 22
+# environment
+PATH = /home/lab/.vscode-server/bin/3866c3553be8b268c8a7f8c0482c0c0177aa8bfa/bin:/home/lab/bin:/home/lab/.local/bin:/home/lab/lab/gll/rna_seq/hisat2-2.1.0:/home/lab/.aspera/connect/bin:/home/lab/anaconda3/bin:/home/lab/.aspera/connect/bin:/opt/jvm/jdk1.8.0_171/bin:/usr/local/include:/usr/local/lib:/home/lab/.vscode-server/bin/3866c3553be8b268c8a7f8c0482c0c0177aa8bfa/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/home/lab/wch/run/bin
+# environment
+XDG_RUNTIME_DIR = /run/user/1000
+# environment
+VSCODE_LOG_STACK = false
+# default
+.FEATURES := target-specific order-only second-expansion else-if shortest-stem undefine oneshell archives jobserver output-sync check-symlink load
+# environment
+LS_COLORS = 
+# environment
+BT2_V = /home/lab/lab/gll/bowtie2-V
+# environment
+DISPLAY = localhost:10.0
+# environment
+VSCODE_PIPE_LOGGING = true
+# environment
+PWD = /home/lab/lab/hzt/gap-FM
+# environment
+QT_QPA_PLATFORMTHEME = appmenu-qt5
+# environment
+VSCODE_IPC_HOOK_CLI = /run/user/1000/vscode-ipc-bd5b1e88-948b-4cf7-ac15-66246b0d4b8d.sock
+# automatic
+*D = $(patsubst %/,%,$(dir $*))
+# environment
+VSCODE_AMD_ENTRYPOINT = vs/server/remoteExtensionHostProcess
+# environment
+HOME = /home/lab
+# environment
+LESSCLOSE = /usr/bin/lesspipe %s %s
+# environment
+LOGNAME = lab
+# environment
+APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = true
+# automatic
++F = $(notdir $+)
+# environment
+VSCODE_HANDLES_UNCAUGHT_ERRORS = true
+# automatic
+^D = $(patsubst %/,%,$(dir $^))
+# environment
+MAKELEVEL := 0
+# default
+MAKE = $(MAKE_COMMAND)
+# default
+MAKECMDGOALS := all
+# environment
+SHLVL = 3
+# environment
+BT2_HOME = /home/lab/lab/gll/bowtie2-master
+# makefile (from 'makefile', line 1)
+CC = g++
+# environment
+JAVA_HOME = /opt/jvm/jdk1.8.0_171
+# environment
+XDG_SESSION_ID = 1
+# environment
+USER = lab
+# makefile
+.DEFAULT_GOAL := fm
+# environment
+CLASSPATH = .:/opt/jvm/jdk1.8.0_171/lib:/opt/jvm/jdk1.8.0_171/jre/lib
+# automatic
+%D = $(patsubst %/,%,$(dir $%))
+# default
+MAKE_COMMAND := make
+# default
+.VARIABLES := 
+# automatic
+*F = $(notdir $*)
+# environment
+LANGUAGE = zh_CN:
+# makefile
+MAKEFLAGS = pqrR
+# environment
+MFLAGS = -pqrR
+# environment
+SSH_CLIENT = 10.170.1.217 61654 22
+# environment
+MAIL = /var/mail/lab
+# automatic
++D = $(patsubst %/,%,$(dir $+))
+# environment
+BROWSER = /home/lab/.vscode-server/bin/3866c3553be8b268c8a7f8c0482c0c0177aa8bfa/bin/helpers/browser.sh
+# automatic
+%F = $(notdir $%)
+# default
+MAKEFILES := 
+# automatic
+<F = $(notdir $<)
+# environment
+LC_ALL = C
+# automatic
+^F = $(notdir $^)
+# default
+SUFFIXES := 
+# environment
+BT2_D = /home/lab/lab/gll/bowtie2-D
+# default
+.INCLUDE_DIRS = /usr/include /usr/local/include /usr/include
+# environment
+VSCODE_INJECT_NODE_MODULE_LOOKUP_PATH = /home/lab/.vscode-server/bin/3866c3553be8b268c8a7f8c0482c0c0177aa8bfa/remote/node_modules
+# default
+.RECIPEPREFIX := 
+# default
+MAKE_HOST := x86_64-pc-linux-gnu
+# environment
+LANG = C
+# environment
+VSCODE_EXTHOST_WILL_SEND_SOCKET = true
+# variable set hash-table stats:
+# Load=77/1024=8%, Rehash=0, Collisions=8/105=8%
+
+# Pattern-specific Variable Values
+
+# No pattern-specific variable values.
+
+# Directories
+
+# . (device 2082, inode 95109149): 67 files, no impossibilities.
+
+# 67 files, no impossibilities in 1 directories.
+
+# Implicit Rules
+
+%.o: %.cpp divsufsort.h Dmap.h Huffman_WT.h ABS_WT.h FM.h loadkit.h savekit.h UseCount.h WT_Node.h WT_Handle.h BaseClass.h divsufsort64.h BitMap.h Hutacker_WT.h InArray.h Balance_WT.h
+#  recipe to execute (from 'makefile', line 14):
+	$(CC) -c  $(CFLAGS) $< -o $@
+
+# 1 implicit rules, 0 (0.0%) terminal.
+
+# Files
+
+all: fm clean
+#  Command line target.
+#  Implicit rule search has been done.
+#  File does not exist.
+#  File has been updated.
+#  Needs to be updated (-q is set).
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/3=0%
+
+fm: div main.o fm.a
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has been updated.
+#  Needs to be updated (-q is set).
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/3=0%
+#  recipe to execute (from 'makefile', line 4):
+	g++ main.o fm.a   -o CIndexGeneral
+
+# Not a target:
+FM.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+ABS_WT.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+sssort.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+Hutacker_WT.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+fm.a: ABS_WT.o Balance_WT.o Huffman_WT.o Hutacker_WT.o FM.o Dmap.o BitMap.o UseCount.o WT_Handle.o InArray.o loadkit.o savekit.o divsufsort.o sssort.o trsort.o utils.o
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'makefile', line 11):
+	ar rc fm.a ABS_WT.o Balance_WT.o Huffman_WT.o Hutacker_WT.o FM.o Dmap.o BitMap.o UseCount.o WT_Handle.o  InArray.o loadkit.o savekit.o divsufsort.o sssort.o trsort.o utils.o
+
+# Not a target:
+savekit.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+.SUFFIXES:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+test.o: test.cpp FM.h
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'makefile', line 20):
+	g++ -c $(CFLAGS) test.cpp -lrt
+
+# Not a target:
+makefile:
+#  Implicit rule search has been done.
+#  Last modified 2021-07-26 22:28:37.257904
+#  File has been updated.
+#  Successfully updated.
+
+# Not a target:
+UseCount.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+main.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+Dmap.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+WT_Handle.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+ 
+Huffman_WT.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+divsufsort.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+.DEFAULT:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+FM.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+Balance_WT.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+trsort.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+div:
+#  Implicit rule search has not been done.
+#  Implicit/static pattern stem: ''
+#  File does not exist.
+#  File has been updated.
+#  Needs to be updated (-q is set).
+# automatic
+# @ := div
+# automatic
+# % := 
+# automatic
+# * := 
+# automatic
+# + := 
+# automatic
+# | := 
+# automatic
+# < := 
+# automatic
+# ^ := 
+# automatic
+# ? := 
+# variable set hash-table stats:
+# Load=8/32=25%, Rehash=0, Collisions=1/11=9%
+#  recipe to execute (from 'makefile', line 26):
+	make -C ./divsufsort/; cp divsufsort/libdivsufsort.a .;ar x libdivsufsort.a;rm libdivsufsort.a 
+
+clean:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'makefile', line 23):
+	rm *.a *.o ./divsufsort/*.a ./divsufsort/*.o
+
+# Not a target:
+InArray.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+utils.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+main.o: main.cpp FM.h
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'makefile', line 17):
+	g++ -c  main.cpp
+
+# Not a target:
+test.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+loadkit.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+BitMap.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# files hash-table stats:
+# Load=29/1024=3%, Rehash=0, Collisions=3/70=4%
+# VPATH Search Paths
+
+# No 'vpath' search paths.
+
+# No general ('VPATH' variable) search path.
+
+# strcache buffers: 1 (0) / strings = 78 / storage = 797 B / avg = 10 B
+# current buf: size = 8162 B / used = 797 B / count = 78 / avg = 10 B
+
+# strcache performance: lookups = 134 / hit rate = 41%
+# hash-table stats:
+# Load=78/8192=1%, Rehash=0, Collisions=3/134=2%
+# Finished Make data base on Fri Sep  3 11:26:01 2021
+
+ 

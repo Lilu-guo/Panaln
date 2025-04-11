@@ -1,0 +1,20 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/home/lab/lab/hzt/gap-FM'
+make -C ./divsufsort/; cp divsufsort/libdivsufsort.a .;ar x libdivsufsort.a;rm libdivsufsort.a 
+g++ -c  main.cpp
+g++ -c  -O3 -no-pie -Wall ABS_WT.cpp -o ABS_WT.o
+g++ -c  -O3 -no-pie -Wall Balance_WT.cpp -o Balance_WT.o
+g++ -c  -O3 -no-pie -Wall Huffman_WT.cpp -o Huffman_WT.o
+g++ -c  -O3 -no-pie -Wall Hutacker_WT.cpp -o Hutacker_WT.o
+g++ -c  -O3 -no-pie -Wall FM.cpp -o FM.o
+g++ -c  -O3 -no-pie -Wall Dmap.cpp -o Dmap.o
+g++ -c  -O3 -no-pie -Wall BitMap.cpp -o BitMap.o
+g++ -c  -O3 -no-pie -Wall UseCount.cpp -o UseCount.o
+g++ -c  -O3 -no-pie -Wall WT_Handle.cpp -o WT_Handle.o
+g++ -c  -O3 -no-pie -Wall InArray.cpp -o InArray.o
+g++ -c  -O3 -no-pie -Wall loadkit.cpp -o loadkit.o
+g++ -c  -O3 -no-pie -Wall savekit.cpp -o savekit.o
+ar rc fm.a ABS_WT.o Balance_WT.o Huffman_WT.o Hutacker_WT.o FM.o Dmap.o BitMap.o UseCount.o WT_Handle.o  InArray.o loadkit.o savekit.o divsufsort.o sssort.o trsort.o utils.o
+g++ main.o fm.a   -o CIndexGeneral
+make: Leaving directory '/home/lab/lab/hzt/gap-FM'
+ 
