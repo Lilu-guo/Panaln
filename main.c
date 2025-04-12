@@ -19,7 +19,7 @@ static int usage() {
 	fprintf(stderr, "--------------\n");
 	fprintf(stderr, "Feedback Email: <guolilu@stu.xidian.edu.cn>\n");
 	printf("\n");
-	return 1;
+	return 0;
 }
 static int combine_usage() {
 	printf("Usage: panaln combine -s <input.fasta> -v <input.vcf> -b <basename> \n");
