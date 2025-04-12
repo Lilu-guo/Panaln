@@ -19,7 +19,7 @@ static int usage() {
 	fprintf(stderr, "--------------\n");
 	fprintf(stderr, "Feedback Email: <guolilu@stu.xidian.edu.cn>\n");
 	printf("\n");
-	return 1;
+	return 0;
 }
 static int combine_usage() {
 	printf("Usage: panaln combine -s <input.fasta> -v <input.vcf> -b <basename> \n");
@@ -32,7 +32,7 @@ static int combine_usage() {
     fprintf(stderr, "--------------\n");
     fprintf(stderr, "Feedback Email: <guolilu@stu.xidian.edu.cn>\n");
 	printf("\n");
-	return 1;
+	return 0;
 }
 static int index_usage() {
 	printf("Usage: panaln index -p <input.pan> \n");
@@ -42,7 +42,7 @@ static int index_usage() {
     fprintf(stderr, "--------------\n");
     fprintf(stderr, "Feedback Email: <guolilu@stu.xidian.edu.cn>\n");
 	printf("\n");
-	return 1;
+	return 0;
 }
 static int align_usage() {
 	printf("Usage: panaln align -x <index_basename> -f <input.fastq> -s <output.sam> \n");
@@ -54,7 +54,7 @@ static int align_usage() {
     fprintf(stderr, "--------------\n");
     fprintf(stderr, "Feedback Email: <guolilu@stu.xidian.edu.cn>\n");
 	printf("\n");
-	return 1;
+	return 0;
 }
 int main(int argc, char *argv[]) {
 	if (argc < 2) return usage();
@@ -65,10 +65,10 @@ int main(int argc, char *argv[]) {
 			switch (c) {
 				case 'p': npan = optarg; break;                           
 				case 'h': index_usage(); break;
-				default: index_usage(); return 1;
+				default: index_usage(); return 0;
 			}
 		}
-		if(npan == NULL){index_usage(); return 1;}
+		if(npan == NULL){index_usage(); return 0;}
 		index_bwt(npan, use_esa_file);  
 	} else if (strcmp(argv[1], "align") == 0) {                                   
 		aln_params_t* params = (aln_params_t*) calloc(1, sizeof(aln_params_t));
@@ -81,10 +81,10 @@ int main(int argc, char *argv[]) {
 				case 'f': nfastq = optarg; break;   
 				case 's': nsam = optarg; break;     
 				case 'h': align_usage(); break;     
-				default: align_usage(); return 1;
+				default: align_usage(); return 0;
 			}
 		}
-		if(nidx==NULL || nfastq==NULL || nsam==NULL){align_usage(); return 1;}
+		if(nidx==NULL || nfastq==NULL || nsam==NULL){align_usage(); return 0;}
 		align_reads(nidx, nfastq, nsam, params);
 		free(params);
 	} else if (strcmp(argv[1], "combine") == 0) {                          
@@ -107,10 +107,10 @@ int main(int argc, char *argv[]) {
 				case 'v': nvcf = optarg; break;
 				case 'b': nbase = optarg; break;
 				case 'h': combine_usage(); break;
-				default: combine_usage(); return 1;
+				default: combine_usage(); return 0;
 			}
 		}
-		if(nfasta==NULL || nvcf==NULL || nbase==NULL){combine_usage(); return 1;}
+		if(nfasta==NULL || nvcf==NULL || nbase==NULL){combine_usage(); return 0;}
 		char **chr_list, **new_chr_list; 
 		chr_list = (char **)malloc(MAX_CHROM * sizeof(char *));
 		for (int i = 0; i < MAX_CHROM; i++) {
