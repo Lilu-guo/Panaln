@@ -1,6 +1,6 @@
 CC=			gcc
 CXX=		g++
-CFLAGS=		-g -w -O3 -std=c99 -fopenmp -no-pie   
+CFLAGS=		-g -w -O3 -std=c99 -fopenmp -no-pie -D_GNU_SOURCE  
 CXXFLAGS=	$(CFLAGS)
 DFLAGS=		-DHAVE_PTHREAD
 DBGFLAGS= 	#-DDEBUG_ENABLED
