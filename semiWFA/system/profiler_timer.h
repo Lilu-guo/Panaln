@@ -33,8 +33,9 @@
 #ifndef PROFILER_TIMER_H
 #define PROFILER_TIMER_H
 
+#define _XOPEN_SOURCE 700
 #include <time.h>
-// #include <sys/time.h>
+#include <sys/time.h>
 #include "profiler_counter.h"
 
 /*
