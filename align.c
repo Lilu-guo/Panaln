@@ -11,6 +11,7 @@
 #include "exact_match.h"
 #include "inexact_match.h"
 #include "io.h"
+uint8_t code[256];
 void make_code(void)
 {
 	for (size_t i = 0; i < 256; i++)

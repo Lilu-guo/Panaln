@@ -75,5 +75,5 @@ alns_t* alnsf2alns_bin(int* n_alns, char *alnFname);
 void eval_alns(char *fastaFname, char *readsFname, char *alnFname, int is_multiref, int max_diff);
 void alns2sam(char *fastaFname, char *readsFname, char *alnsFname, char* samFname, int is_multiref, int max_diff);
 void alns2sam_fm(char *fastaFname, char *readsFname, char *alnsFname, char* samFname, int is_multiref, int max_diff);
-uint8_t code[256];
+extern uint8_t code[256];
 #endif
