@@ -1,5 +1,5 @@
 # Panaln
- Version 2.03（20250415）
+ Version 2.04（20250416）
 
 # What is it?
  Panaln: Indexing pangenome for read alignment.

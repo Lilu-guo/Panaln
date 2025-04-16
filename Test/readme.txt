@@ -1,0 +1,1 @@
+Since 1.fa (247MB) and 1.fa.vcf (28MB) exceed the size limit of GitHub (less than 25MB), we submitted them to Dropbox and provided the download link here
