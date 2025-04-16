@@ -474,7 +474,7 @@ reads_t* fastq2reads(const char *readsFname) {
 	fclose(readsFile);
 	return reads;
 }
-char *strdup(const char *str) {
+char *my_strdup(const char *str) {
     int n = strlen(str) + 1;
     char *dup = malloc(n * sizeof(char));
     if(dup)
@@ -498,7 +498,7 @@ void parse_read_mapping(read_t* read) {
 	read->mref_pos = (bwtint_t*) malloc(read->num_mref_pos*sizeof(bwtint_t));
 	int token_index = 0;
 	const char delimiters[] = "_";
-	char* read_name = strdup(read->name);
+	char* read_name = my_strdup(read->name);
 	char* token = strtok(read_name, delimiters);
 	while (token != NULL) {
 		if(token_index == 1) {
